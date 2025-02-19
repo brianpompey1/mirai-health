@@ -4,6 +4,10 @@ import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import RequestAppointmentScreen from '../screens/RequestAppointmentScreen';
+import DietPlanScreen from '../screens/DietPlanScreen'; // Import
+import DietPlanHistoryScreen from '../screens/DietPlanHistoryScreen'; // Import
+import SupportNavigator from './SupportNavigator'; // Import
+
 
 const ProfileStack = createNativeStackNavigator();
 
@@ -18,6 +22,9 @@ const ProfileNavigator = () => {
       <ProfileStack.Screen name="Settings" component={SettingsScreen} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
       <ProfileStack.Screen name="RequestAppointment" component={RequestAppointmentScreen} />
+      <ProfileStack.Screen name="DietPlan" component={DietPlanScreen} />
+      <ProfileStack.Screen name="DietPlanHistory" component={DietPlanHistoryScreen} />
+      <ProfileStack.Screen name="Support" component={SupportNavigator} options={{headerShown: false}}/>
     </ProfileStack.Navigator>
   );
 };

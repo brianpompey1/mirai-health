@@ -116,6 +116,17 @@ const ProfileScreen = ({ navigation }) => {
     const weightChangeSinceStart = currentWeight - startWeight;
     const weightChangeSinceLast = currentWeight - lastWeight;
 
+    // Placeholder diet plan data (replace with data from API)
+  const [currentDietPlan, setCurrentDietPlan] = useState({
+    name: 'Balanced Diet',
+    calorieTarget: 2000,
+    proteinTarget: 150,
+    carbsTarget: 200,
+    fatTarget: 60,
+    allowedFoods: ['Chicken', 'Fish', 'Vegetables', 'Fruits', 'Whole Grains'],
+    restrictedFoods: ['Processed Foods', 'Sugary Drinks', 'Excessive Saturated Fats'],
+  });
+
   return (
     <SafeAreaView style={styles.container}>
     <ScrollView style={styles.container}>
@@ -178,6 +189,26 @@ const ProfileScreen = ({ navigation }) => {
         </View>
         <TouchableOpacity onPress={() => {/* TODO: Navigate to detailed weight history screen */ }}>
             <Text style={styles.viewHistoryText}>View Weight History Chart</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Diet Plan Section */}
+      <View style={styles.dietPlanSection}>
+        <Text style={styles.sectionTitle}>Current Diet Plan</Text>
+        <View style={styles.dietPlanOverview}>
+          <Text>Calories: {currentDietPlan.calorieTarget} kcal</Text>
+          <Text>Protein: {currentDietPlan.proteinTarget}g</Text>
+          <Text>Carbs: {currentDietPlan.carbsTarget}g</Text>
+          <Text>Fat: {currentDietPlan.fatTarget}g</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.viewDetailsButton}
+          onPress={() => navigation.navigate('DietPlan', { dietPlan: currentDietPlan })}
+        >
+          <Text style={styles.viewDetailsButtonText}>View Details</Text>
+        </TouchableOpacity>
+         <TouchableOpacity onPress={() => navigation.navigate('DietPlanHistory')}>
+            <Text style={styles.viewHistoryText}>View Diet Plan History</Text>
         </TouchableOpacity>
       </View>
 
@@ -388,7 +419,28 @@ const styles = StyleSheet.create({
       textAlign: 'center',
       marginTop: 10,
       fontSize: 16
-  }
+  },
+  dietPlanSection: {
+    backgroundColor: 'white',
+    margin: 10,
+    borderRadius: 10,
+    padding: 15,
+  },
+  dietPlanOverview: {
+    marginBottom: 10,
+  },
+  viewDetailsButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  viewDetailsButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontFamily: 'sans-serif-medium',
+  },
 });
 
 export default ProfileScreen;
