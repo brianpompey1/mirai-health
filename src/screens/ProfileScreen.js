@@ -278,7 +278,8 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.settingsPlaceholder} />
         <View style={styles.profileInfo}>
           <Image
-            source={require('../assets/images/placeholder-profile.png')} 
+                       source={profilePicture ? { uri: profilePicture } : require('../assets/images/placeholder-profile.png')}
+
             style={styles.profileImage}
           />
           <Text style={styles.userName}>{userName}</Text>

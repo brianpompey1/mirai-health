@@ -14,7 +14,7 @@ const Tab = createBottomTabNavigator();
 const CustomTabBarButton = ({ onPress, children }) => (
   <TouchableOpacity
     style={{
-      top: -30,
+      top: -5,
       justifyContent: 'center',
       alignItems: 'center',
       ...styles.shadow,
@@ -23,8 +23,8 @@ const CustomTabBarButton = ({ onPress, children }) => (
   >
     <View
       style={{
-        width: 70,
-        height: 70,
+        width: 50,
+        height: 50,
         borderRadius: 35,
         backgroundColor: '#007AFF',
         justifyContent: 'center',
@@ -101,7 +101,7 @@ const AppNavigator = () => {
           component={() => null} // Keep this empty
           options={{
             tabBarIcon: () => (
-              <Ionicons name="add-sharp" size={36} color="white" />
+              <Ionicons name="add-sharp" size={28} color="white" />
             ),
             tabBarButton: (props) => (
               <CustomTabBarButton {...props} onPress={toggleAddModal} />
