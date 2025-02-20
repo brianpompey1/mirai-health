@@ -16,7 +16,7 @@ const DietPlanScreen = ({ route }) => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Current Diet Plan</Text>
+      {/* <Text style={styles.title}>Current Diet Plan</Text> */}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Name:</Text>

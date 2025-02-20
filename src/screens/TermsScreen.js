@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 const TermsScreen = () => {
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Terms of Service</Text>
+      {/* <Text style={styles.title}>Terms of Service</Text> */}
       <Text style={styles.content}>
         {/* Your Terms of Service content here.  This should be a long string or
             loaded from a separate file. */}

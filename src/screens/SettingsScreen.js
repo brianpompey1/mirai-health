@@ -17,7 +17,7 @@ const SettingsScreen = ({navigation}) => { //Get navigation prop
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Settings</Text>
+      {/* <Text style={styles.title}>Settings</Text> */}
 
       <View style={styles.settingItem}>
         <Text style={styles.settingText}>Dark Mode</Text>

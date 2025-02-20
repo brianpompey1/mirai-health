@@ -2,71 +2,207 @@ import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, Platform, Alert} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Calendar from 'expo-calendar';
+import { supabase } from '../utils/supabase';
 
 const ProfileScreen = ({ navigation }) => {
     // Placeholder data (replace with data from API)
-  const [upcomingAppointments, setUpcomingAppointments] = useState([
-    {
-      id: '1',
-      date: new Date('2024-03-15T10:00:00'),
-      location: 'Mirai Clinic Downtown',
-    },
-    {
-      id: '2',
-      date: new Date('2024-03-22T14:30:00'),
-      location: 'Mirai Clinic Uptown',
-    },
-  ]);
+  // const [upcomingAppointments, setUpcomingAppointments] = useState([
+  //   {
+  //     id: '1',
+  //     date: new Date('2024-03-15T10:00:00'),
+  //     location: 'Mirai Clinic Downtown',
+  //   },
+  //   {
+  //     id: '2',
+  //     date: new Date('2024-03-22T14:30:00'),
+  //     location: 'Mirai Clinic Uptown',
+  //   },
+  // ]);
 
-  const [pastAppointments, setPastAppointments] = useState([
-    {
-      id: '3',
-      date: new Date('2024-02-01T09:00:00'),
-      location: 'Mirai Clinic Downtown',
-      notes: 'Initial consultation. Discussed diet plan and goals.',
-    },
-  ]);
+  // const [pastAppointments, setPastAppointments] = useState([
+  //   {
+  //     id: '3',
+  //     date: new Date('2024-02-01T09:00:00'),
+  //     location: 'Mirai Clinic Downtown',
+  //     notes: 'Initial consultation. Discussed diet plan and goals.',
+  //   },
+  // ]);
+
+  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
+  const [pastAppointments, setPastAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState(null); // Store the user's ID
 
   const [currentWeight, setCurrentWeight] = useState(185); // in lbs
-    const [goalWeight, setGoalWeight] = useState(150); // in lbs
-    const [startWeight, setStartWeight] = useState(200); //in lbs
-    const [lastWeight, setLastWeight] = useState(190);
+  const [goalWeight, setGoalWeight] = useState(150); // in lbs
+  const [startWeight, setStartWeight] = useState(200); //in lbs
+  const [lastWeight, setLastWeight] = useState(190);
 
-    useEffect(() => {
-        (async () => {
-          if (Platform.OS !== 'web') {
-              const { status } = await Calendar.requestCalendarPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission to access calendar was denied');
-              }
+  const [userName, setUserName] = useState(''); // Add state for userName
+  const [profilePicture, setProfilePicture] = useState(''); // Add state for profile picture.
+
+  // Fetch user data and appointments
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setLoading(true);
+      try {
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+          navigation.navigate('Auth'); // Redirect to login if not logged in
+          return;
+        }
+
+        setUserId(user.id); // Set the user ID
+
+        // Fetch user data (name, profile picture)
+        const { data: profileData, error: profileError } = await supabase
+          .from('users')
+          .select('first_name, profile_picture')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+          Alert.alert('Error', 'Failed to fetch profile data.');
+        } else if (profileData) {
+            setUserName(profileData.first_name);
+            setProfilePicture(profileData.profile_picture);
+        }
+
+
+        // Fetch upcoming appointments
+        const { data: upcoming, error: upcomingError } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('date_time', new Date().toISOString())
+          .order('date_time', { ascending: true });
+
+        if (upcomingError) {
+          console.error('Error fetching upcoming appointments:', upcomingError);
+          Alert.alert('Error', 'Failed to fetch upcoming appointments.');
+        } else {
+          setUpcomingAppointments(
+            upcoming.map((appointment) => ({
+              ...appointment,
+              date: new Date(appointment.date_time), // Convert to Date object
+            }))
+          );
+        }
+
+        // Fetch past appointments
+      const { data: past, error: pastError } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('user_id', user.id)
+        .lt('date_time', new Date().toISOString())
+        .order('date_time', { ascending: false });
+
+      if (pastError) {
+        console.error('Error fetching past appointments:', pastError);
+        Alert.alert('Error', 'Failed to fetch past appointments.');
+      } else {
+        setPastAppointments(
+          past.map((appointment) => ({
+            ...appointment,
+            date: new Date(appointment.date_time), // Convert to Date object
+          }))
+        );
+      }
+      } catch (error) {
+        console.error('Unexpected error:', error);
+        Alert.alert('Error', 'An unexpected error occurred.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUserData();
+  }, [navigation]);
+  
+  useEffect(() => {
+      (async () => {
+        if (Platform.OS !== 'web') {
+            const { status } = await Calendar.requestCalendarPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permission to access calendar was denied');
             }
-        })();
-      }, []);
+          }
+      })();
+  }, []);
+
+  // const handleReschedule = async (appointmentId, newDateTime) => {
+  //   try {
+  //       setLoading(true)
+  //     const { error } = await supabase
+  //       .from('appointments')
+  //       .update({ date_time: newDateTime.toISOString() }) // Update the date_time
+  //       .eq('id', appointmentId) // Where the appointment ID matches
+  //       .eq('user_id', userId);   // *Always* include user_id for security (RLS)
+
+  //     if (error) {
+  //       console.error('Error rescheduling appointment:', error);
+  //       Alert.alert('Error', 'Failed to reschedule appointment.');
+  //     } else {
+  //       // Update the upcomingAppointments state to reflect the change
+  //       // (You'll need to implement this part based on how you manage state)
+  //       Alert.alert('Success', 'Appointment rescheduled successfully!');
+  //       //Optionally refetch
+  //     }
+  //   } catch(err) {
+  //       console.error("Unexpected error rescheduling", err);
+  //       Alert.alert("Error", "An unexpected error occurred")
+  //   } finally {
+  //       setLoading(false);
+  //   }
+  // };
 
   const handleReschedule = (appointmentId) => {
-    // TODO: Implement reschedule logic (open a modal/screen to select a new date/time)
-    // For now, just log the ID
-    console.log('Reschedule appointment:', appointmentId);
-    Alert.alert('Reschedule', `Reschedule appointment ${appointmentId} (Implementation coming soon)`);
+    navigation.navigate('RescheduleAppointment', { appointmentId }); // Navigate and pass ID
   };
 
-  const handleCancel = (appointmentId) => {
-     // TODO:  Implement cancel logic (call API)
-     console.log('Cancel appointment:', appointmentId);
-      Alert.alert(
-          "Cancel Appointment",
-          "Are you sure you want to cancel this appointment?",
-          [
-              {
-                  text: "Cancel",
-                  style: "cancel"
-              },
-              { text: "OK", onPress: () => {
-                  //Placeholder for cancel
-                  setUpcomingAppointments(prevAppointments => prevAppointments.filter(appointment => appointment.id != appointmentId))
-              } }
-          ]
-      );
+  const handleCancel = async (appointmentId) => {
+
+    Alert.alert(
+        "Cancel Appointment",
+        "Are you sure you want to cancel this appointment?",
+        [
+            {
+                text: "No",
+                style: "cancel"
+            },
+            { text: "Yes", onPress: async () => {
+                try {
+                    setLoading(true);
+                    const { error } = await supabase
+                        .from('appointments')
+                        .delete()
+                        .eq('id', appointmentId)
+                        .eq('user_id', userId); // Ensure user can only cancel their own appointments
+
+                    if (error) {
+                        console.error('Error canceling appointment:', error);
+                        Alert.alert('Error', 'Failed to cancel appointment.');
+                    } else {
+                        // Remove the canceled appointment from the local state
+                        setUpcomingAppointments(prevAppointments =>
+                            prevAppointments.filter(appointment => appointment.id !== appointmentId)
+                        );
+                        Alert.alert('Success', 'Appointment canceled successfully!');
+                    }
+                } catch (err) {
+                    console.error("Unexpected Error:", err);
+                    Alert.alert("Error", "An unexpected error occurred")
+                }
+                finally {
+                    setLoading(false);
+                }
+            }}
+        ]
+    );
   };
 
   const addToCalendar = async (appointment) => {
@@ -105,16 +241,16 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
-    const formatDate = (date) => {
-      return date.toLocaleDateString();
-    }
+  const formatDate = (date) => {
+    return date.toLocaleDateString();
+  }
 
-    const formatTime = (date) => {
-        return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-    }
+  const formatTime = (date) => {
+      return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+  }
 
-    const weightChangeSinceStart = currentWeight - startWeight;
-    const weightChangeSinceLast = currentWeight - lastWeight;
+  const weightChangeSinceStart = currentWeight - startWeight;
+  const weightChangeSinceLast = currentWeight - lastWeight;
 
     // Placeholder diet plan data (replace with data from API)
   const [currentDietPlan, setCurrentDietPlan] = useState({
@@ -127,27 +263,34 @@ const ProfileScreen = ({ navigation }) => {
     restrictedFoods: ['Processed Foods', 'Sugary Drinks', 'Excessive Saturated Fats'],
   });
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Profile</Text>
+      <View style={styles.topSection}>
+        <View style={styles.settingsPlaceholder} />
+        <View style={styles.profileInfo}>
+          <Image
+            source={require('../assets/images/placeholder-profile.png')} 
+            style={styles.profileImage}
+          />
+          <Text style={styles.userName}>{userName}</Text>
+          <Text style={styles.userDetail}>Member Since: January 2024</Text>
+          {/* Add more user details here as needed */}
+        </View>
         <TouchableOpacity
           style={styles.settingsButton}
           onPress={() => navigation.navigate('Settings')}
         >
           <Ionicons name="settings-outline" size={24} color="black" />
         </TouchableOpacity>
-      </View>
-
-      <View style={styles.profileInfo}>
-        <Image
-          source={require('../assets/images/placeholder-profile.png')} // Use your placeholder
-          style={styles.profileImage}
-        />
-        <Text style={styles.userName}>Brian Pompey</Text>
-        <Text style={styles.userDetail}>Member Since: January 2024</Text>
-        {/* Add more user details here as needed */}
       </View>
 
       <TouchableOpacity
@@ -276,6 +419,17 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     // backgroundColor: '#f0f0f0',
   },
+  topSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: 20,
+    width: '100%',
+  },
+  profileInfo: {
+    alignItems: 'center',
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -287,12 +441,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'sans-serif-medium',
   },
-  settingsButton: {
-    padding: 5, // Add some padding for easier tapping
+  settingsPlaceholder: {
+    width: 34,
   },
-  profileInfo: {
-    alignItems: 'center',
-    padding: 20,
+  settingsButton: {
+    padding: 5,
   },
   profileImage: {
     width: 100,

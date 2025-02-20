@@ -18,7 +18,7 @@ const ContactSupportScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Contact Support</Text>
+      {/* <Text style={styles.title}>Contact Support</Text> */}
 
       <TouchableOpacity style={styles.contactOption} onPress={openEmail}>
           <Ionicons name='mail-outline' size={24} color='#007AFF'/>

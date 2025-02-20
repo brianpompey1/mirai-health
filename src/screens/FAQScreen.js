@@ -12,7 +12,7 @@ const FAQScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Frequently Asked Questions</Text>
+      {/* <Text style={styles.title}>Frequently Asked Questions</Text> */}
       {faqData.map((item, index) => (
         <View key={index} style={styles.faqItem}>
           <Text style={styles.question}>{item.question}</Text>
