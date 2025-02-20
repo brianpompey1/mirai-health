@@ -24,6 +24,7 @@ const DashboardScreen = () => {
   const [meals, setMeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false); // New state for submission
 
     useEffect(() => {
       const fetchUser = async() => {
@@ -149,23 +150,94 @@ const DashboardScreen = () => {
     }, [userId])
 
 
-  const handleAddWater = () => {
-    setWaterIntake((prevIntake) => prevIntake + 250); // Increase by 250ml
-    //TODO: Update in the database
+    const handleAddWater = async () => {
+      const newIntake = waterIntake + 250;
+      setWaterIntake(newIntake);
+
+      try {
+          const { error } = await supabase
+          .from('daily_summaries')
+          .upsert({
+              user_id: userId,
+              date: new Date().toISOString().split('T')[0],
+              water_intake: newIntake,
+          }, { onConflict: 'user_id, date'})
+          .select()
+
+          if(error){
+              console.error("Error adding water", error)
+              Alert.alert("Error", "Failed to add water")
+          }
+      } catch(error) {
+        console.error("Error adding water to db" , error)
+        Alert.alert("Error", "Failed to add water")
+      }
   };
 
-  const handleRemoveWater = () => {
-    setWaterIntake((prevIntake) => Math.max(0, prevIntake - 250)); // Decrease by 250ml, but don't go below 0
-    //TODO: Update in database
+  const handleRemoveWater = async() => {
+      const newIntake = Math.max(0, waterIntake - 250);
+      setWaterIntake(newIntake);
+
+        try {
+          const { error } = await supabase
+          .from('daily_summaries')
+          .upsert({
+              user_id: userId,
+              date: new Date().toISOString().split('T')[0],
+              water_intake: newIntake,
+          }, { onConflict: 'user_id, date'})
+          .select()
+
+          if(error){
+              console.error("Error removing water", error)
+              Alert.alert("Error", "Could not remove water")
+          }
+      } catch(error) {
+        console.error("Error removing water from db" , error)
+        Alert.alert("Error", "Failed to remove water")
+      }
   };
 
-    if (loading) {
-    return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text>Loading...</Text>
-        </View>
-        );
+  const handleCompleteDay = async () => {
+    setIsSubmitting(true);
+    try {
+      // 1. Calculate Totals (You're already doing this in the useEffect)
+
+      // 2. Upsert into daily_summaries
+      const { error: upsertError } = await supabase
+        .from('daily_summaries')
+        .upsert({
+          user_id: userId,
+          date: new Date().toISOString().split('T')[0], // Today's date
+          total_calories: caloriesConsumed,
+          total_protein: protein,
+          total_carbs: carbs,
+          total_fat: fat,
+          water_intake: waterIntake,
+        }, { onConflict: 'user_id, date' }) //  Use the UNIQUE constraint
+        .select();
+
+      if (upsertError) {
+        console.error('Error saving daily summary:', upsertError);
+        Alert.alert('Error', 'Failed to save daily summary.');
+        return;
+      }
+
+      // 3.  (Optional) Reset local state -  Up to you, depending on UX.
+      // setMeals([]);
+      // setCaloriesConsumed(0);
+      // setWaterIntake(0);
+
+      Alert.alert('Success', 'Day completed and data saved!');
+
+    } catch (error) {
+      console.error('Error completing day:', error);
+      Alert.alert('Error', 'Failed to complete the day.');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+  
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -199,6 +271,19 @@ const DashboardScreen = () => {
             <MealCard key={index} mealName={meal.name} items={meal.items} />
           ))}
         </View>
+
+        {/* Complete Day Button */}
+        <TouchableOpacity
+            style={styles.completeDayButton}
+            onPress={handleCompleteDay}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.completeDayButtonText}>
+              {isSubmitting ? 'Submitting...' : 'Complete Day'}
+            </Text>
+        </TouchableOpacity>
+
+
         <View style={{height: 80}}></View>
       </ScrollView>
     </SafeAreaView>
@@ -247,7 +332,19 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginLeft: 15,
   },
-
+  completeDayButton: {
+    backgroundColor: '#27ae60', // A green color
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+    margin: 20,
+    alignItems: 'center'
+},
+  completeDayButtonText: {
+      color: 'white',
+      fontSize: 18,
+      fontFamily: 'sans-serif-medium'
+  }
 });
 
 export default DashboardScreen;
