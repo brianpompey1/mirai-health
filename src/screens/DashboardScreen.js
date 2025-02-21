@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, Text, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
 import DashboardHeader from '../components/DashboardHeader';
 import MotivationCard from '../components/MotivationCard';
@@ -7,8 +7,10 @@ import WaterIntake from '../components/WaterIntake';
 import MacronutrientBreakdown from '../components/MacronutrientBreakdown';
 import MealCard from '../components/MealCard';
 import { supabase } from '../utils/supabase';
+import { useFocusEffect, useNavigation } from '@react-navigation/native'; // Import useFocusEffect and useNavigation
 
 const DashboardScreen = () => {
+  const navigation = useNavigation();
   const [userName, setUserName] = useState('');
   const [profilePicture, setProfilePicture] = useState('');
   const [motivationalQuote, setMotivationalQuote] = useState("Believe you can and you're halfway there.");
@@ -66,88 +68,105 @@ const DashboardScreen = () => {
     }, [])
 
 
-    useEffect(() => {
-      const fetchMeals = async() => {
-        if(!userId) return;
+    useFocusEffect(
+      React.useCallback(() => {
+        const fetchData = async () => {
+  
+           if (!userId) return;
+  
+           setLoading(true); // Show loading indicator
+           try {
+               const { data, error } = await supabase
+                   .from('meals')
+                   .select(
+                     `
+                     id,
+                     time,
+                     type,
+                     total_calories,
+                     food_items (
+                         id,
+                         name,
+                         calories,
+                         protein,
+                         carbs,
+                         fat
+                     )
+                   `
+                   )
+                   .eq('user_id', userId)
+                   .eq('date', new Date().toISOString().split('T')[0]) // Today's meals
+                   .order('time', { ascending: true });
 
-        try {
-            const {data, error} = await supabase
-              .from('meals')
-              .select(`
-                id,
-                time,
-                type,
-                total_calories,
-                food_items (
-                    id,
-                    name,
-                    calories,
-                    protein,
-                    carbs,
-                    fat
-                )
-              `)
-              .eq('user_id', userId)
-              .eq('date', new Date().toISOString().split('T')[0]) // Today's meals
-              .order('time', {ascending: true})
-
-            if(error) {
-                console.error("Error fetching meals", error);
-                Alert.alert("Error", "Could not get meals")
-                return;
-            }
-            //Transform data
-            const transformedMeals = data.reduce((acc, meal) => {
-                const mealType = meal.type;
-                const mealItems = meal.food_items.map(item => ({
-                    name: item.name,
-                    calories: item.calories
-                }));
-
-                if(!acc[mealType]) {
-                    acc[mealType] = {
-                        name: mealType.charAt(0).toUpperCase() + mealType.slice(1), // Capitalize
-                        items: mealItems
-                    }
-                } else {
-                    acc[mealType].items = [...acc[mealType].items, ...mealItems]
-                }
-                return acc;
-
-            }, {});
-
-            const mealsArray = Object.values(transformedMeals);
-            setMeals(mealsArray);
-
-            // Calculate totals
-            let totalCals = 0;
-            let totalProtein = 0;
-            let totalCarbs = 0;
-            let totalFat = 0;
-
-            data.forEach(meal => {
-              meal.food_items.forEach(item => {
-                totalCals += item.calories;
-                totalProtein += item.protein || 0;  // Handle potential nulls
-                totalCarbs += item.carbs || 0;
-                totalFat += item.fat || 0;
-              });
-            });
-
-            setCaloriesConsumed(totalCals);
-            setProtein(totalProtein);
-            setCarbs(totalCarbs);
-            setFat(totalFat);
-
-
-        } catch(error){
-          console.error("Unexpected Error", error);
-          Alert.alert("Error", "An unexpected error occured.");
-        }
-      }
-      fetchMeals();
-
-    }, [userId])
+               if (error) {
+                   console.error('Error fetching meals:', error);
+                   Alert.alert('Error', 'Failed to fetch meals.');
+                   return;
+               }
+  
+               // Transform data into the desired format for MealCard components.
+               const transformedMeals = data.reduce((acc, meal) => {
+                   const mealType = meal.type;
+                   const mealItems = meal.food_items.map((item) => ({
+                       name: item.name,
+                       calories: item.calories,
+                       protein: item.protein || 0,
+                       carbs: item.carbs || 0,
+                       fat: item.fat || 0
+                   }));
+  
+                   if (!acc[mealType]) {
+                       acc[mealType] = {
+                           name: mealType.charAt(0).toUpperCase() + mealType.slice(1), // Capitalize
+                           items: mealItems,
+                       };
+                   } else {
+                     acc[mealType].items = [...acc[mealType].items, ...mealItems];
+                   }
+                   return acc;
+               }, {});
+  
+               const mealsArray = Object.values(transformedMeals);
+               setMeals(mealsArray);
+  
+  
+               // Calculate totals
+               let totalCals = 0;
+               let totalProtein = 0;
+               let totalCarbs = 0;
+               let totalFat = 0;
+  
+               data.forEach((meal) => {
+                   meal.food_items.forEach((item) => {
+                       totalCals += item.calories;
+                       totalProtein += item.protein || 0;
+                       totalCarbs += item.carbs || 0;
+                       totalFat += item.fat || 0;
+                   });
+               });
+  
+               setCaloriesConsumed(totalCals);
+               setProtein(totalProtein);
+               setCarbs(totalCarbs);
+               setFat(totalFat);
+  
+           } catch (error) {
+             console.error('Unexpected error fetching meals:', error);
+             Alert.alert('Error', 'An unexpected error occurred.');
+           } finally {
+             setLoading(false); // Hide loading indicator
+           }
+         };
+         if(userId) {
+           fetchData();
+         }
+  
+        // Optional: Clean up function (runs when component unmounts or before the effect runs again)
+           return () => {
+            //  setLoading(false); // Reset loading state if needed.
+           };
+      }, [userId]) // Depend on userId
+    );
 
 
     const handleAddWater = async () => {
@@ -263,7 +282,7 @@ const handleCompleteDay = async () => {
         <View style={styles.mealsContainer}>
           <Text style={styles.mealsTitle}>Today's Foods</Text>
           {meals.map((meal, index) => (
-            <MealCard key={index} mealName={meal.name} items={meal.items} />
+            <MealCard key={index} meal={meal} />
           ))}
         </View>
 

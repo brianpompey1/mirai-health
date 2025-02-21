@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, Platform, Alert} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Calendar from 'expo-calendar';
+import { View, ScrollView, StyleSheet, Text, TouchableOpacity, SafeAreaView, Alert, Image } from 'react-native';
 import { supabase } from '../utils/supabase';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 const ProfileScreen = ({ navigation }) => {
     // Placeholder data (replace with data from API)
@@ -28,7 +28,7 @@ const ProfileScreen = ({ navigation }) => {
   //   },
   // ]);
 
-  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState([]); 
   const [pastAppointments, setPastAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null); // Store the user's ID
@@ -40,6 +40,10 @@ const ProfileScreen = ({ navigation }) => {
 
   const [userName, setUserName] = useState(''); // Add state for userName
   const [profilePicture, setProfilePicture] = useState(''); // Add state for profile picture.
+
+  const weightChangeSinceStart = currentWeight - startWeight;
+  const weightChangeSinceLast = currentWeight - lastWeight;
+
 
   // Fetch user data and appointments
   useEffect(() => {
@@ -61,18 +65,77 @@ const ProfileScreen = ({ navigation }) => {
         // Fetch user data (name, profile picture)
         const { data: profileData, error: profileError } = await supabase
           .from('users')
-          .select('first_name, profile_picture')
+          .select('first_name, profile_picture, assigned_diet_plan_id')
           .eq('id', user.id)
           .single();
 
         if (profileError) {
           console.error('Error fetching profile:', profileError);
           Alert.alert('Error', 'Failed to fetch profile data.');
-        } else if (profileData) {
-            setUserName(profileData.first_name);
-            setProfilePicture(profileData.profile_picture);
+          return;
         }
 
+        if (profileData) {
+          setUserName(profileData.first_name);
+          setProfilePicture(profileData.profile_picture);
+        }
+
+        // Fetch weight progress data
+        const { data: weightData, error: weightError } = await supabase
+            .from('user_progress')
+            .select('date, weight')
+            .eq('user_id', user.id)
+            .order('date', { ascending: false }); // Get in descending order
+
+        if (weightError) {
+          console.error('Error fetching weight data:', weightError);
+          Alert.alert('Error', 'Failed to fetch weight data.');
+          return;
+        }
+
+        if (weightData && weightData.length > 0) {
+          // Set current weight to the *most recent* entry
+          setCurrentWeight(weightData[0].weight);
+
+          // Find the *oldest* entry for start weight
+          const startWeightEntry = weightData[weightData.length - 1];
+          setStartWeight(startWeightEntry.weight);
+
+          // Get second most recent for last weight
+          if(weightData.length > 1){
+              setLastWeight(weightData[1].weight)
+          }
+        }
+
+        //Fetch Diet Plan info
+        if (profileData && profileData.assigned_diet_plan_id) {
+          const { data: dietData, error: dietError } = await supabase
+            .from('diet_plans')
+            .select('*')
+            .eq('id', profileData.assigned_diet_plan_id)
+            .single();
+
+          if(dietError) {
+            console.error("Error fetching diet plan info", dietError);
+            Alert.alert("Error", "Failed to fetch diet plan");
+            return;
+          }
+          if(dietData) {
+            setCurrentDietPlan(dietData);
+          }
+        } else {
+          // Set a default diet plan or handle the case where no diet plan is assigned
+          setCurrentDietPlan({
+            name: "No Diet Plan Assigned",
+            description: "Please consult with your nutritionist to get a diet plan.",
+            dailyCalories: 2000,
+            macroSplit: {
+              protein: 30,
+              carbs: 40,
+              fat: 30
+            }
+          });
+        }
 
         // Fetch upcoming appointments
         const { data: upcoming, error: upcomingError } = await supabase
@@ -249,8 +312,8 @@ const ProfileScreen = ({ navigation }) => {
       return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
   }
 
-  const weightChangeSinceStart = currentWeight - startWeight;
-  const weightChangeSinceLast = currentWeight - lastWeight;
+  // const weightChangeSinceStart = currentWeight - startWeight;
+  // const weightChangeSinceLast = currentWeight - lastWeight;
 
     // Placeholder diet plan data (replace with data from API)
   const [currentDietPlan, setCurrentDietPlan] = useState({
@@ -331,7 +394,7 @@ const ProfileScreen = ({ navigation }) => {
             {weightChangeSinceLast} lbs
           </Text>
         </View>
-        <TouchableOpacity onPress={() => {/* TODO: Navigate to detailed weight history screen */ }}>
+        <TouchableOpacity onPress={() => navigation.navigate('WeightHistory')}>
             <Text style={styles.viewHistoryText}>View Weight History Chart</Text>
         </TouchableOpacity>
       </View>

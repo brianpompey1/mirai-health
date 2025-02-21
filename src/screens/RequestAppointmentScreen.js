@@ -122,10 +122,10 @@ const RequestAppointmentScreen = ({ navigation, route }) => { // Get route
         onConfirm={handleDateConfirm}
         onCancel={hideDatePicker}
         minimumDate={new Date()}
+        isDarkModeEnabled={false}
+        display="inline"
         themeVariant="light"
-        headerText="Select Date"
-        confirmText="Confirm"
-        cancelText="Cancel"
+        accentColor="#007AFF"
       />
 
       <TouchableOpacity style={styles.dateTimeButton} onPress={showTimePicker}>
@@ -138,10 +138,10 @@ const RequestAppointmentScreen = ({ navigation, route }) => { // Get route
         onConfirm={handleTimeConfirm}
         onCancel={hideTimePicker}
         is24Hour={false}
+        isDarkModeEnabled={false}
+        display="spinner"
         themeVariant="light"
-        headerText="Select Time"
-        confirmText="Confirm"
-        cancelText="Cancel"
+        accentColor="#007AFF"
       />
 
       <Text style={styles.label}>Notes (Optional):</Text>
@@ -149,14 +149,20 @@ const RequestAppointmentScreen = ({ navigation, route }) => { // Get route
         style={styles.notesInput}
         value={notes}
         onChangeText={setNotes}
-        placeholder="Add any notes about your request..."
+        placeholder="Add any notes about your appointment request..."
         multiline
         numberOfLines={4}
         textAlignVertical="top"
       />
 
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={loading}>
-        <Text style={styles.submitButtonText}>{loading ? 'Submitting...' : 'Submit Request'}</Text>
+      <TouchableOpacity
+        style={styles.submitButton}
+        onPress={handleSubmit}
+        disabled={loading}
+      >
+        <Text style={styles.submitButtonText}>
+          {loading ? 'Submitting...' : 'Request Appointment'}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -169,47 +175,77 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontFamily: 'sans-serif-medium',
-    marginBottom: 20,
+    fontWeight: 'bold',
+    marginBottom: 30,
+    color: '#333',
+    textAlign: 'center',
   },
   dateTimeButton: {
     backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
+    borderRadius: 12,
+    padding: 18,
+    marginVertical: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   dateTimeButtonText: {
     fontSize: 16,
-    fontFamily: 'sans-serif',
+    color: '#333',
+    fontWeight: '500',
   },
   label: {
     fontSize: 16,
-    fontFamily: 'sans-serif-medium',
-    marginBottom: 5,
+    fontWeight: '600',
+    marginTop: 20,
+    marginBottom: 10,
+    color: '#333',
   },
   notesInput: {
     backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
-    fontSize: 16,
-    fontFamily: 'sans-serif',
-    height: 100,
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 20,
+    minHeight: 100,
     textAlignVertical: 'top',
+    fontSize: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   submitButton: {
     backgroundColor: '#007AFF',
-    paddingVertical: 15,
-    borderRadius: 10,
+    borderRadius: 12,
+    padding: 18,
     alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   submitButtonText: {
     color: 'white',
     fontSize: 18,
-    fontFamily: 'sans-serif-medium',
+    fontWeight: '600',
   },
 });
 
