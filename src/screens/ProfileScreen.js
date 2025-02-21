@@ -1,51 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Text, TouchableOpacity, SafeAreaView, Alert, Image } from 'react-native';
+import {
+  View,
+  ScrollView,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+  Alert,
+  Image,
+  Platform
+} from 'react-native';
 import { supabase } from '../utils/supabase';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Calendar from 'expo-calendar';
 
 const ProfileScreen = ({ navigation }) => {
-    // Placeholder data (replace with data from API)
-  // const [upcomingAppointments, setUpcomingAppointments] = useState([
-  //   {
-  //     id: '1',
-  //     date: new Date('2024-03-15T10:00:00'),
-  //     location: 'Mirai Clinic Downtown',
-  //   },
-  //   {
-  //     id: '2',
-  //     date: new Date('2024-03-22T14:30:00'),
-  //     location: 'Mirai Clinic Uptown',
-  //   },
-  // ]);
-
-  // const [pastAppointments, setPastAppointments] = useState([
-  //   {
-  //     id: '3',
-  //     date: new Date('2024-02-01T09:00:00'),
-  //     location: 'Mirai Clinic Downtown',
-  //     notes: 'Initial consultation. Discussed diet plan and goals.',
-  //   },
-  // ]);
-
-  const [upcomingAppointments, setUpcomingAppointments] = useState([]); 
+  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [pastAppointments, setPastAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState(null); // Store the user's ID
+  const [userId, setUserId] = useState(null);
+  const [currentWeight, setCurrentWeight] = useState(0); // Initialize to 0
+  const [goalWeight, setGoalWeight] = useState(150); //  Make dynamic later
+  const [startWeight, setStartWeight] = useState(0);  // Initialize to 0
+  const [lastWeight, setLastWeight] = useState(0);
+  const [currentDietPlan, setCurrentDietPlan] = useState(null); // Initialize as null
+  const [userName, setUserName] = useState('');
+  const [profilePicture, setProfilePicture] = useState('');
 
-  const [currentWeight, setCurrentWeight] = useState(185); // in lbs
-  const [goalWeight, setGoalWeight] = useState(150); // in lbs
-  const [startWeight, setStartWeight] = useState(200); //in lbs
-  const [lastWeight, setLastWeight] = useState(190);
+  // Calculate weight changes *after* we have all the data
+  const weightChangeSinceStart =
+    startWeight && currentWeight ? currentWeight - startWeight : 0; // Prevent NaN
+  const weightChangeSinceLast =
+    lastWeight && currentWeight ? currentWeight - lastWeight : 0; // Prevent NaN
 
-  const [userName, setUserName] = useState(''); // Add state for userName
-  const [profilePicture, setProfilePicture] = useState(''); // Add state for profile picture.
-
-  const weightChangeSinceStart = currentWeight - startWeight;
-  const weightChangeSinceLast = currentWeight - lastWeight;
-
-
-  // Fetch user data and appointments
   useEffect(() => {
     const fetchUserData = async () => {
       setLoading(true);
@@ -56,16 +44,18 @@ const ProfileScreen = ({ navigation }) => {
         } = await supabase.auth.getUser();
 
         if (authError || !user) {
-          navigation.navigate('Auth'); // Redirect to login if not logged in
+          navigation.navigate('Auth');
           return;
         }
 
-        setUserId(user.id); // Set the user ID
+        setUserId(user.id);
 
-        // Fetch user data (name, profile picture)
+        // Fetch user data (name, profile picture, start_weight)
         const { data: profileData, error: profileError } = await supabase
           .from('users')
-          .select('first_name, profile_picture, assigned_diet_plan_id')
+          .select(
+            'first_name, profile_picture, assigned_diet_plan_id, start_weight'
+          ) // Include start_weight
           .eq('id', user.id)
           .single();
 
@@ -78,14 +68,34 @@ const ProfileScreen = ({ navigation }) => {
         if (profileData) {
           setUserName(profileData.first_name);
           setProfilePicture(profileData.profile_picture);
+          if (profileData.start_weight) {
+            setStartWeight(profileData.start_weight); // Set start_weight
+          }
+
+          if (profileData.assigned_diet_plan_id) {
+            const { data: dietData, error: dietError } = await supabase
+              .from('diet_plans')
+              .select('*')
+              .eq('id', profileData.assigned_diet_plan_id)
+              .single();
+
+            if (dietError) {
+              console.error('Error fetching diet plan info:', dietError);
+              Alert.alert('Error', 'Failed to fetch diet plan.');
+            } else if (dietData) {
+              setCurrentDietPlan(dietData);
+            }
+          } else {
+            setCurrentDietPlan(null);
+          }
         }
 
         // Fetch weight progress data
         const { data: weightData, error: weightError } = await supabase
-            .from('user_progress')
-            .select('date, weight')
-            .eq('user_id', user.id)
-            .order('date', { ascending: false }); // Get in descending order
+          .from('user_progress')
+          .select('date, weight')
+          .eq('user_id', user.id)
+          .order('date', { ascending: false });
 
         if (weightError) {
           console.error('Error fetching weight data:', weightError);
@@ -94,50 +104,13 @@ const ProfileScreen = ({ navigation }) => {
         }
 
         if (weightData && weightData.length > 0) {
-          // Set current weight to the *most recent* entry
           setCurrentWeight(weightData[0].weight);
-
-          // Find the *oldest* entry for start weight
-          const startWeightEntry = weightData[weightData.length - 1];
-          setStartWeight(startWeightEntry.weight);
-
-          // Get second most recent for last weight
-          if(weightData.length > 1){
-              setLastWeight(weightData[1].weight)
+          if (weightData.length > 1) {
+            setLastWeight(weightData[1].weight);
           }
         }
 
-        //Fetch Diet Plan info
-        if (profileData && profileData.assigned_diet_plan_id) {
-          const { data: dietData, error: dietError } = await supabase
-            .from('diet_plans')
-            .select('*')
-            .eq('id', profileData.assigned_diet_plan_id)
-            .single();
-
-          if(dietError) {
-            console.error("Error fetching diet plan info", dietError);
-            Alert.alert("Error", "Failed to fetch diet plan");
-            return;
-          }
-          if(dietData) {
-            setCurrentDietPlan(dietData);
-          }
-        } else {
-          // Set a default diet plan or handle the case where no diet plan is assigned
-          setCurrentDietPlan({
-            name: "No Diet Plan Assigned",
-            description: "Please consult with your nutritionist to get a diet plan.",
-            dailyCalories: 2000,
-            macroSplit: {
-              protein: 30,
-              carbs: 40,
-              fat: 30
-            }
-          });
-        }
-
-        // Fetch upcoming appointments
+        // Fetch upcoming and past appointments (No changes here, but included for completeness)
         const { data: upcoming, error: upcomingError } = await supabase
           .from('appointments')
           .select('*')
@@ -152,30 +125,29 @@ const ProfileScreen = ({ navigation }) => {
           setUpcomingAppointments(
             upcoming.map((appointment) => ({
               ...appointment,
-              date: new Date(appointment.date_time), // Convert to Date object
+              date: new Date(appointment.date_time),
             }))
           );
         }
 
-        // Fetch past appointments
-      const { data: past, error: pastError } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('user_id', user.id)
-        .lt('date_time', new Date().toISOString())
-        .order('date_time', { ascending: false });
+        const { data: past, error: pastError } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('user_id', user.id)
+          .lt('date_time', new Date().toISOString())
+          .order('date_time', { ascending: false });
 
-      if (pastError) {
-        console.error('Error fetching past appointments:', pastError);
-        Alert.alert('Error', 'Failed to fetch past appointments.');
-      } else {
-        setPastAppointments(
-          past.map((appointment) => ({
-            ...appointment,
-            date: new Date(appointment.date_time), // Convert to Date object
-          }))
-        );
-      }
+        if (pastError) {
+          console.error('Error fetching past appointments:', pastError);
+          Alert.alert('Error', 'Failed to fetch past appointments.');
+        } else {
+          setPastAppointments(
+            past.map((appointment) => ({
+              ...appointment,
+              date: new Date(appointment.date_time),
+            }))
+          );
+        }
       } catch (error) {
         console.error('Unexpected error:', error);
         Alert.alert('Error', 'An unexpected error occurred.');
@@ -183,99 +155,75 @@ const ProfileScreen = ({ navigation }) => {
         setLoading(false);
       }
     };
+
     fetchUserData();
   }, [navigation]);
-  
+
+  // Request calendar permissions (No changes)
   useEffect(() => {
-      (async () => {
-        if (Platform.OS !== 'web') {
-            const { status } = await Calendar.requestCalendarPermissionsAsync();
-            if (status !== 'granted') {
-              Alert.alert('Permission to access calendar was denied');
-            }
-          }
-      })();
+    (async () => {
+      if (Platform.OS !== 'web') {
+        const { status } = await Calendar.requestCalendarPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission to access calendar was denied');
+        }
+      }
+    })();
   }, []);
 
-  // const handleReschedule = async (appointmentId, newDateTime) => {
-  //   try {
-  //       setLoading(true)
-  //     const { error } = await supabase
-  //       .from('appointments')
-  //       .update({ date_time: newDateTime.toISOString() }) // Update the date_time
-  //       .eq('id', appointmentId) // Where the appointment ID matches
-  //       .eq('user_id', userId);   // *Always* include user_id for security (RLS)
-
-  //     if (error) {
-  //       console.error('Error rescheduling appointment:', error);
-  //       Alert.alert('Error', 'Failed to reschedule appointment.');
-  //     } else {
-  //       // Update the upcomingAppointments state to reflect the change
-  //       // (You'll need to implement this part based on how you manage state)
-  //       Alert.alert('Success', 'Appointment rescheduled successfully!');
-  //       //Optionally refetch
-  //     }
-  //   } catch(err) {
-  //       console.error("Unexpected error rescheduling", err);
-  //       Alert.alert("Error", "An unexpected error occurred")
-  //   } finally {
-  //       setLoading(false);
-  //   }
-  // };
-
   const handleReschedule = (appointmentId) => {
-    navigation.navigate('RescheduleAppointment', { appointmentId }); // Navigate and pass ID
+    navigation.navigate('RescheduleAppointment', { appointmentId });
   };
 
-  const handleCancel = async (appointmentId) => {
+    const handleCancel = async (appointmentId) => {
 
-    Alert.alert(
-        "Cancel Appointment",
-        "Are you sure you want to cancel this appointment?",
-        [
-            {
-                text: "No",
-                style: "cancel"
-            },
-            { text: "Yes", onPress: async () => {
-                try {
-                    setLoading(true);
-                    const { error } = await supabase
-                        .from('appointments')
-                        .delete()
-                        .eq('id', appointmentId)
-                        .eq('user_id', userId); // Ensure user can only cancel their own appointments
+        Alert.alert(
+            "Cancel Appointment",
+            "Are you sure you want to cancel this appointment?",
+            [
+                {
+                    text: "No",
+                    style: "cancel"
+                },
+                { text: "Yes", onPress: async () => {
+                    try {
+                        setLoading(true);
+                        const { error } = await supabase
+                            .from('appointments')
+                            .delete()
+                            .eq('id', appointmentId)
+                            .eq('user_id', userId); // Ensure user can only cancel their own appointments
 
-                    if (error) {
-                        console.error('Error canceling appointment:', error);
-                        Alert.alert('Error', 'Failed to cancel appointment.');
-                    } else {
-                        // Remove the canceled appointment from the local state
-                        setUpcomingAppointments(prevAppointments =>
-                            prevAppointments.filter(appointment => appointment.id !== appointmentId)
-                        );
-                        Alert.alert('Success', 'Appointment canceled successfully!');
+                        if (error) {
+                            console.error('Error canceling appointment:', error);
+                            Alert.alert('Error', 'Failed to cancel appointment.');
+                        } else {
+                            // Remove the canceled appointment from the local state
+                            setUpcomingAppointments(prevAppointments =>
+                                prevAppointments.filter(appointment => appointment.id !== appointmentId)
+                            );
+                            Alert.alert('Success', 'Appointment canceled successfully!');
+                        }
+                    } catch (err) {
+                        console.error("Unexpected Error:", err);
+                        Alert.alert("Error", "An unexpected error occurred")
                     }
-                } catch (err) {
-                    console.error("Unexpected Error:", err);
-                    Alert.alert("Error", "An unexpected error occurred")
-                }
-                finally {
-                    setLoading(false);
-                }
-            }}
-        ]
-    );
-  };
+                    finally {
+                        setLoading(false);
+                    }
+                }}
+            ]
+        );
+    };
+
 
   const addToCalendar = async (appointment) => {
+    // ... (your existing addToCalendar function - no changes needed) ...
     try {
-      const defaultCalendarSource =
-        Platform.OS === 'ios'
-          ? await Calendar.getDefaultCalendarAsync(Calendar.EntityTypes.EVENT) // For iOS
-          : { isLocalAccount: true, name: 'Expo Calendar' }; //For Android
-
-      // You might want a more sophisticated way to get/create a calendar
+        const defaultCalendarSource =
+          Platform.OS === 'ios'
+            ? await Calendar.getDefaultCalendarAsync(Calendar.EntityTypes.EVENT) // For iOS
+            : { isLocalAccount: true, name: 'Expo Calendar' }; //For Android
         const newCalendarID = await Calendar.createCalendarAsync({
           title: 'Mirai Appointments',
           color: 'blue',
@@ -296,7 +244,6 @@ const ProfileScreen = ({ navigation }) => {
             notes: 'Remember to bring your food log.',
             timeZone: 'America/Los_Angeles', // Replace with user's timezone
         });
-
       Alert.alert('Success', 'Appointment added to calendar!');
     } catch (error) {
       console.error('Error adding to calendar:', error);
@@ -304,35 +251,21 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  const formatDate = (date) => {
-    return date.toLocaleDateString();
-  }
+    const formatDate = (date) => {
+      return date.toLocaleDateString();
+    }
 
-  const formatTime = (date) => {
-      return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-  }
+    const formatTime = (date) => {
+        return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    }
 
-  // const weightChangeSinceStart = currentWeight - startWeight;
-  // const weightChangeSinceLast = currentWeight - lastWeight;
-
-    // Placeholder diet plan data (replace with data from API)
-  const [currentDietPlan, setCurrentDietPlan] = useState({
-    name: 'Balanced Diet',
-    calorieTarget: 2000,
-    proteinTarget: 150,
-    carbsTarget: 200,
-    fatTarget: 60,
-    allowedFoods: ['Chicken', 'Fish', 'Vegetables', 'Fruits', 'Whole Grains'],
-    restrictedFoods: ['Processed Foods', 'Sugary Drinks', 'Excessive Saturated Fats'],
-  });
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Loading...</Text>
-      </View>
-    );
-  }
+    if (loading) {
+        return (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text>Loading...</Text>
+          </View>
+        );
+      }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -402,20 +335,28 @@ const ProfileScreen = ({ navigation }) => {
       {/* Diet Plan Section */}
       <View style={styles.dietPlanSection}>
         <Text style={styles.sectionTitle}>Current Diet Plan</Text>
-        <View style={styles.dietPlanOverview}>
-          <Text>Calories: {currentDietPlan.calorieTarget} kcal</Text>
-          <Text>Protein: {currentDietPlan.proteinTarget}g</Text>
-          <Text>Carbs: {currentDietPlan.carbsTarget}g</Text>
-          <Text>Fat: {currentDietPlan.fatTarget}g</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.viewDetailsButton}
-          onPress={() => navigation.navigate('DietPlan', { dietPlan: currentDietPlan })}
-        >
-          <Text style={styles.viewDetailsButtonText}>View Details</Text>
-        </TouchableOpacity>
-         <TouchableOpacity onPress={() => navigation.navigate('DietPlanHistory')}>
-            <Text style={styles.viewHistoryText}>View Diet Plan History</Text>
+        {currentDietPlan ? (
+          <>
+            <View style={styles.dietPlanOverview}>
+              <Text>Calories: {currentDietPlan.calorieTarget} kcal</Text>
+              <Text>Protein: {currentDietPlan.proteinTarget}g</Text>
+              <Text>Carbs: {currentDietPlan.carbsTarget}g</Text>
+              <Text>Fat: {currentDietPlan.fatTarget}g</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.viewDetailsButton}
+              onPress={() =>
+                navigation.navigate('DietPlan', { dietPlan: currentDietPlan })
+              }
+            >
+              <Text style={styles.viewDetailsButtonText}>View Details</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <Text>No diet plan assigned.</Text> // Or some other placeholder
+        )}
+        <TouchableOpacity onPress={() => navigation.navigate('DietPlanHistory')}>
+          <Text style={styles.viewHistoryText}>View Diet Plan History</Text>
         </TouchableOpacity>
       </View>
 

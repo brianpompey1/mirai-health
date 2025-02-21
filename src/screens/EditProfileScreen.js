@@ -12,18 +12,58 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { supabase } from '../utils/supabase';
 
 const EditProfileScreen = ({ navigation }) => {
   // Placeholder data - replace with actual user data from context/state
   const [name, setName] = useState('Brian Pompey');
   const [email, setEmail] = useState('brian.pompey@example.com');
   const [phone, setPhone] = useState('555-123-4567');
+  const [startWeight, setStartWeight] = useState(''); // Add state for startWeight
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [profilePicture, setProfilePicture] = useState(''); // Store the URI
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState(null)
 
   useEffect(() => {
+
+    const fetchUserData = async() => {
+        setLoading(true);
+        try {
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                navigation.navigate('Auth'); // Redirect to login if not logged in
+                return;
+            }
+            setUserId(user.id)
+            const {data, error} = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', user.id)
+                .single()
+            if(error) {
+                console.error("Error fetching user data", error);
+                Alert.alert("Error", "Failed to get user data")
+            }
+            if(data) {
+                setName(data.first_name);
+                setEmail(data.email);
+                setPhone(data.phone);
+                setProfilePicture(data.profile_picture)
+                setStartWeight(data.start_weight ? data.start_weight.toString() : ''); //NEW
+            }
+        } catch(error) {
+            console.error("Error", error);
+            Alert.alert("Error", "An unexpected error occurred")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    fetchUserData();
+
       (async () => {
         if (Platform.OS !== 'web') { // Camera roll access not needed on web
           const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -64,50 +104,76 @@ const EditProfileScreen = ({ navigation }) => {
 
   };
 
-    const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     // TODO: Implement save changes logic (call API, update user data)
-        // Basic validation
-        if (newPassword !== confirmNewPassword) {
-          Alert.alert('Error', 'New passwords do not match.');
+      // Basic validation
+      setLoading(true)
+      try {
+           if (newPassword !== confirmNewPassword) {
+              Alert.alert('Error', 'New passwords do not match.');
+              return;
+          }
+
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) {
+          // Handle case where user is not logged in (redirect to login, show error)
+          navigation.navigate("Auth") //redirect
           return;
         }
 
-        // Placeholder for API call (replace with your actual API call)
-        // Example using fetch:
-        /*
-        fetch('/api/user/update', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name,
-            email,
-            phone,
-            currentPassword,
-            newPassword,
-            profilePicture, // Send the updated picture URI
-          }),
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            Alert.alert('Success', 'Profile updated successfully!');
-            navigation.goBack(); // Go back to the Profile screen
-          } else {
-            Alert.alert('Error', data.message || 'Failed to update profile.');
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          Alert.alert('Error', 'An error occurred while updating your profile.');
-        });
-        */
-        //For now, since there's no backend
-        Alert.alert("Success", "Changes Saved");
-        navigation.goBack();
+      const updates = {
+          first_name: name,
+          email: email,
+          phone: phone,
+          profile_picture: profilePicture,
+          start_weight: parseFloat(startWeight) || null,  // Convert to number, handle empty string
+          // Don't include passwords here
+      };
 
+
+      // Update user data in Supabase
+      const { data, error } = await supabase
+          .from('users')
+          .update(updates)
+          .eq('id', user.id) // Update the row where id matches the user's ID
+          .select(); //Returns the updated info
+
+      if (error) {
+          console.error('Error updating profile:', error);
+          Alert.alert('Error', error.message); // Use error.message for Supabase errors
+          return;
+      }
+
+      // Update password (if a new password was entered)
+      if (newPassword) {
+          const { error: passwordError } = await supabase.auth.updateUser({
+              password: newPassword
+          });
+
+          if (passwordError) {
+            Alert.alert("Error", passwordError.message);
+            return;
+          }
+      }
+       Alert.alert('Success', 'Profile updated successfully!');
+       navigation.goBack(); // Go back to the Profile screen
+
+      } catch(error){
+          console.error("Catch error", error)
+          Alert.alert("Error", "Failed to save changes.")
+      } finally {
+          setLoading(false)
+      }
   };
+
+
+  if (loading) {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text>Loading...</Text>
+    </View>
+  );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -147,6 +213,15 @@ const EditProfileScreen = ({ navigation }) => {
           onChangeText={setPhone}
           placeholder="Enter your phone number"
           keyboardType="phone-pad"
+        />
+
+        <Text style={styles.label}>Starting Weight (lbs):</Text>
+        <TextInput
+            style={styles.input}
+            value={startWeight}
+            onChangeText={setStartWeight}
+            placeholder="Enter your starting weight"
+            keyboardType="numeric"
         />
 
         <Text style={styles.sectionTitle}>Change Password</Text>
