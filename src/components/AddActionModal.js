@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Modal from 'react-native-modal';
 import { Ionicons } from '@expo/vector-icons';
 
-const AddActionModal = ({ isVisible, onClose, onAddExercise, onAddFood, onAddWater }) => {
+const AddActionModal = ({ isVisible, onClose, onAddExercise, onAddFood }) => {
   return (
     <Modal
       isVisible={isVisible}
@@ -29,11 +29,6 @@ const AddActionModal = ({ isVisible, onClose, onAddExercise, onAddFood, onAddWat
         <TouchableOpacity style={styles.option} onPress={onAddFood}>
           <Ionicons name="fast-food-outline" size={24} color="#007AFF" />
           <Text style={styles.optionText}>Add Food</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.option} onPress={onAddWater}>
-          <Ionicons name="water-outline" size={24} color="#007AFF" />
-          <Text style={styles.optionText}>Add Water</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.cancelButton} onPress={onClose}>

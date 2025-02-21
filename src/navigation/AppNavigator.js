@@ -1,15 +1,19 @@
 // src/navigation/AppNavigator.js
-import React, { useState, useCallback } from 'react'; // Import useCallback
+import React, { useState, useCallback } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import DashboardScreen from '../screens/DashboardScreen';
 import LogScreen from '../screens/LogScreen';
 import RecommendationsScreen from '../screens/RecommendationsScreen';
 import ProfileNavigator from './ProfileNavigator';
+import AddFoodScreen from '../screens/AddFoodScreen';
 import { Ionicons } from '@expo/vector-icons';
 import AddActionModal from '../components/AddActionModal';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 const CustomTabBarButton = ({ onPress, children }) => (
   <TouchableOpacity
@@ -36,28 +40,28 @@ const CustomTabBarButton = ({ onPress, children }) => (
   </TouchableOpacity>
 );
 
-const AppNavigator = () => {
-  const [isAddModalVisible, setAddModalVisible] = useState(false); // Modal visibility state
+const TabNavigator = () => {
+  const [isAddModalVisible, setAddModalVisible] = useState(false);
+  const navigation = useNavigation();
 
-  // Use useCallback to prevent unnecessary re-renders of the function
   const toggleAddModal = useCallback(() => {
     setAddModalVisible((prev) => !prev);
   }, []);
 
-    const handleAddExercise = () => {
-        //Placeholder logic, add the exercise
-        toggleAddModal();
-    }
-    const handleAddFood = () => {
-        //Placeholder logic, add food
-        toggleAddModal();
-    }
-    const handleAddWater = () => {
-      //Placeholder logic
-      toggleAddModal();
-    }
+  const handleAddExercise = useCallback(() => {
+    navigation.navigate("Profile", {
+      screen: "AddExercise",
+      params: {closeModal: toggleAddModal}
+    });
+    toggleAddModal();
+  }, [navigation]);
 
-  const closeModal = useCallback(() => { // Function to close the modal
+  const handleAddFood = useCallback(() => {
+    navigation.navigate("AddFood", {closeModal: toggleAddModal});
+    toggleAddModal();
+  }, [navigation]);
+
+  const closeModal = useCallback(() => {
     setAddModalVisible(false);
   }, []);
 
@@ -89,16 +93,16 @@ const AppNavigator = () => {
         <Tab.Screen
           name="Dashboard"
           component={DashboardScreen}
-          initialParams={{ closeModal }} // Pass closeModal down
+          initialParams={{ closeModal }}
         />
         <Tab.Screen
           name="Log"
           component={LogScreen}
-          initialParams={{ closeModal }} // Pass closeModal down
+          initialParams={{ closeModal }}
         />
         <Tab.Screen
           name="Add"
-          component={() => null} // Keep this empty
+          component={() => null}
           options={{
             tabBarIcon: () => (
               <Ionicons name="add-sharp" size={28} color="white" />
@@ -111,25 +115,32 @@ const AppNavigator = () => {
         <Tab.Screen
           name="Recommendations"
           component={RecommendationsScreen}
-          initialParams={{ closeModal }} // Pass closeModal down
+          initialParams={{ closeModal }}
         />
         <Tab.Screen
-            name="Profile"
-            component={ProfileNavigator}
-            initialParams={{ closeModal }} // Pass closeModal down
+          name="Profile"
+          component={ProfileNavigator}
+          initialParams={{ closeModal }}
         />
       </Tab.Navigator>
-      {/* Conditionally render the modal */}
       {isAddModalVisible && (
         <AddActionModal
           isVisible={isAddModalVisible}
           onClose={toggleAddModal}
           onAddExercise={handleAddExercise}
           onAddFood={handleAddFood}
-          onAddWater={handleAddWater}
         />
       )}
     </>
+  );
+};
+
+const AppNavigator = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MainTabs" component={TabNavigator} />
+      <Stack.Screen name="AddFood" component={AddFoodScreen} options={{ headerShown: true, title: 'Add Food' }} />
+    </Stack.Navigator>
   );
 };
 

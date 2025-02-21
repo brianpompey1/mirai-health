@@ -77,7 +77,7 @@ const DashboardScreen = () => {
                 id,
                 time,
                 type,
-                totalCalories,
+                total_calories,
                 food_items (
                     id,
                     name,
@@ -175,68 +175,63 @@ const DashboardScreen = () => {
   };
 
   const handleRemoveWater = async() => {
-      const newIntake = Math.max(0, waterIntake - 250);
-      setWaterIntake(newIntake);
+    const newIntake = Math.max(0, waterIntake - 250);
+    setWaterIntake(newIntake);
 
-        try {
-          const { error } = await supabase
-          .from('daily_summaries')
-          .upsert({
-              user_id: userId,
-              date: new Date().toISOString().split('T')[0],
-              water_intake: newIntake,
-          }, { onConflict: 'user_id, date'})
-          .select()
-
-          if(error){
-              console.error("Error removing water", error)
-              Alert.alert("Error", "Could not remove water")
-          }
-      } catch(error) {
-        console.error("Error removing water from db" , error)
-        Alert.alert("Error", "Failed to remove water")
-      }
-  };
-
-  const handleCompleteDay = async () => {
-    setIsSubmitting(true);
-    try {
-      // 1. Calculate Totals (You're already doing this in the useEffect)
-
-      // 2. Upsert into daily_summaries
-      const { error: upsertError } = await supabase
+      try {
+        const { error } = await supabase
         .from('daily_summaries')
         .upsert({
+            user_id: userId,
+            date: new Date().toISOString().split('T')[0],
+            water_intake: newIntake,
+        }, { onConflict: 'user_id, date'})
+        .select()
+
+        if(error){
+            console.error("Error removing water", error)
+            Alert.alert("Error", "Could not remove water")
+        }
+    } catch(error) {
+      console.error("Error removing water from db" , error)
+      Alert.alert("Error", "Failed to remove water")
+    }
+};
+
+const handleCompleteDay = async () => {
+  setIsSubmitting(true);
+  try {
+    // Upsert into daily_summaries
+    const { error: upsertError } = await supabase
+      .from('daily_summaries')
+      .upsert(
+        {
           user_id: userId,
-          date: new Date().toISOString().split('T')[0], // Today's date
+          date: new Date().toISOString().split('T')[0],
           total_calories: caloriesConsumed,
           total_protein: protein,
           total_carbs: carbs,
           total_fat: fat,
           water_intake: waterIntake,
-        }, { onConflict: 'user_id, date' }) //  Use the UNIQUE constraint
-        .select();
+        },
+        { onConflict: 'user_id, date' }
+      )
+      .select();
 
-      if (upsertError) {
-        console.error('Error saving daily summary:', upsertError);
-        Alert.alert('Error', 'Failed to save daily summary.');
-        return;
-      }
-
-      // 3.  (Optional) Reset local state -  Up to you, depending on UX.
-      // setMeals([]);
-      // setCaloriesConsumed(0);
-      // setWaterIntake(0);
-
-      Alert.alert('Success', 'Day completed and data saved!');
-
-    } catch (error) {
-      console.error('Error completing day:', error);
-      Alert.alert('Error', 'Failed to complete the day.');
-    } finally {
-      setIsSubmitting(false);
+    if (upsertError) {
+      console.error('Error saving daily summary:', upsertError);
+      Alert.alert('Error', 'Failed to save daily summary.');
+      return;
     }
-  };
+
+    Alert.alert('Success', 'Day completed and data saved!');
+  } catch (error) {
+    console.error('Error completing day:', error);
+    Alert.alert('Error', 'Failed to complete the day.');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   
 
   return (

@@ -8,6 +8,7 @@ import DietPlanScreen from '../screens/DietPlanScreen'; // Import
 import DietPlanHistoryScreen from '../screens/DietPlanHistoryScreen'; // Import
 import SupportNavigator from './SupportNavigator'; // Import
 import RescheduleAppointmentScreen from '../screens/RescheduleAppointmentScreen'; // Import
+import AddExerciseScreen from '../screens/AddExerciseScreen'; //Import
 
 
 
@@ -28,6 +29,7 @@ const ProfileNavigator = () => {
       <ProfileStack.Screen name="DietPlanHistory" component={DietPlanHistoryScreen} />
       <ProfileStack.Screen name="Support" component={SupportNavigator} options={{headerShown: false}}/>
       <ProfileStack.Screen name="RescheduleAppointment" component={RescheduleAppointmentScreen} />
+      <ProfileStack.Screen name="AddExercise" component={AddExerciseScreen} />
     </ProfileStack.Navigator>
   );
 };
