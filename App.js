@@ -8,6 +8,7 @@ import { View, Text } from 'react-native'; //For loading state
 import AuthNavigator from './src/navigation/AuthNavigator';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider } from './src/contexts/ThemeContext';
+import { ModalProvider } from './src/contexts/ModalContext';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -46,7 +47,9 @@ export default function App() {
     <ThemeProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
-          {user ? <AppNavigator /> : <AuthNavigator />}
+          <ModalProvider>
+            {user ? <AppNavigator /> : <AuthNavigator />}
+          </ModalProvider>
         </NavigationContainer>
       </GestureHandlerRootView>
     </ThemeProvider>

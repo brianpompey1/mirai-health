@@ -19,6 +19,7 @@ import WeightHistoryScreen from '../screens/WeightHistoryScreen';
 import DietPlanScreen from '../screens/DietPlanScreen';
 import DietPlanHistoryScreen from '../screens/DietPlanHistoryScreen';
 import AuthScreen from '../screens/AuthScreen';
+import { useModal } from '../contexts/ModalContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -52,30 +53,21 @@ const CustomTabBarButton = ({ onPress, children }) => {
 };
 
 const TabNavigator = () => {
-  const [isAddModalVisible, setAddModalVisible] = useState(false);
   const { theme } = useTheme();
   const navigation = useNavigation();
-
-  const toggleAddModal = useCallback(() => {
-    setAddModalVisible((prev) => !prev);
-  }, []);
+  const { isAddModalVisible, toggleAddModal } = useModal();
 
   const handleAddExercise = useCallback(() => {
     navigation.navigate("Profile", {
-      screen: "AddExercise",
-      params: {closeModal: toggleAddModal}
+      screen: "ProfileHome"
     });
     toggleAddModal();
-  }, [navigation]);
+  }, [navigation, toggleAddModal]);
 
   const handleAddFood = useCallback(() => {
-    navigation.navigate("AddFood", {closeModal: toggleAddModal});
+    navigation.navigate("AddFood");
     toggleAddModal();
-  }, [navigation]);
-
-  const closeModal = useCallback(() => {
-    setAddModalVisible(false);
-  }, []);
+  }, [navigation, toggleAddModal]);
 
   return (
     <>
@@ -96,8 +88,8 @@ const TabNavigator = () => {
 
             return <Ionicons name={iconName} size={size} color={color} />;
           },
-          tabBarActiveTintColor: theme.tabBarActive,  // Use theme colors
-          tabBarInactiveTintColor: theme.tabBarInactive, // Use theme colors
+          tabBarActiveTintColor: theme.tabBarActive,
+          tabBarInactiveTintColor: theme.tabBarInactive,
           tabBarStyle: {
             backgroundColor: theme.cardBackground,
             borderTopColor: theme.border,
@@ -116,16 +108,14 @@ const TabNavigator = () => {
         <Tab.Screen
           name="Dashboard"
           component={DashboardScreen}
-          initialParams={{ closeModal }}
         />
         <Tab.Screen
           name="Log"
           component={LogScreen}
-          initialParams={{ closeModal }}
         />
         <Tab.Screen
           name="Add"
-          component={() => null}
+          children={() => null}
           options={{
             tabBarIcon: () => (
               <Ionicons name="add-sharp" size={28} color="white" />
@@ -138,12 +128,10 @@ const TabNavigator = () => {
         <Tab.Screen
           name="Recommendations"
           component={RecommendationsScreen}
-          initialParams={{ closeModal }}
         />
         <Tab.Screen
           name="Profile"
           component={ProfileNavigator}
-          initialParams={{ closeModal }}
         />
       </Tab.Navigator>
       {isAddModalVisible && (

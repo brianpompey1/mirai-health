@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Alert, Platform, Modal, TextInput, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import { supabase } from '../utils/supabase';
 import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useTheme } from '../contexts/ThemeContext';
-
+import { useFocusEffect } from '@react-navigation/native';
 
 const LogScreen = ({ navigation, route }) => {
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(() => {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0); // Set time to midnight
+        return now;
+    });
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
     const [logData, setLogData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -20,6 +24,92 @@ const LogScreen = ({ navigation, route }) => {
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     const { theme } = useTheme();
 
+    const fetchLogData = useCallback(async () => {
+        setLoading(true);
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            navigation.navigate('Auth');
+            return;
+        }
+        try {
+            // Format date as YYYY-MM-DD for database query
+            const dateString = selectedDate.toISOString().split('T')[0];
+            
+            const { data, error } = await supabase
+                .from('daily_summaries')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('date', dateString);
+
+            if (error) {
+                console.error('Error fetching log data:', error);
+                Alert.alert('Error', 'Failed to fetch log data.');
+            } else {
+                const summaryData = data && data.length > 0 ? data[0] : null;
+                const { data: mealData, error: mealError } = await supabase
+                    .from('meals')
+                    .select(`
+                        id,
+                        time,
+                        type,
+                        total_calories,
+                        food_items (
+                            id,
+                            name,
+                            calories,
+                            protein,
+                            carbs,
+                            fat
+                        )
+                    `)
+                    .eq('user_id', user.id)
+                    .eq('date', dateString)
+                    .order('time', { ascending: true });
+
+                if (mealError) {
+                    console.error("Error fetching meals:", mealError);
+                    Alert.alert("Error", "Failed to fetch meals");
+                    return;
+                }
+                if (summaryData) {
+                    setLogData({ ...summaryData, meals: mealData || [] });
+                    setWaterIntake(summaryData.water_intake || 0);
+                } else {
+                    // Reset everything for a new day
+                    setLogData({
+                        date: selectedDate, 
+                        total_calories: 0,
+                        total_protein: 0,
+                        total_carbs: 0,
+                        total_fat: 0,
+                        water_intake: 0,
+                        meals: [],
+                    });
+                    setWaterIntake(0);
+                }
+            }
+        } catch (error) {
+            console.error('Unexpected error:', error);
+            Alert.alert('Error', 'An unexpected error occurred.');
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedDate, navigation]);
+
+    // Update selectedDate to current date when screen is focused
+    useFocusEffect(
+        useCallback(() => {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0); // Set time to midnight for comparison
+            const current = new Date(selectedDate);
+            current.setHours(0, 0, 0, 0);
+
+            if (now.getTime() !== current.getTime()) {
+                setSelectedDate(now);
+            }
+        }, [])
+    );
+
     // Add useEffect to handle refresh parameter
     useEffect(() => {
         if (route.params?.refresh) {
@@ -27,7 +117,12 @@ const LogScreen = ({ navigation, route }) => {
             // Clear the refresh parameter
             navigation.setParams({ refresh: undefined });
         }
-    }, [route.params?.refresh]);
+    }, [route.params?.refresh, fetchLogData]);
+
+    // Fetch data when selectedDate changes
+    useEffect(() => {
+        fetchLogData();
+    }, [fetchLogData]);
 
     const showDatePicker = () => {
         setDatePickerVisibility(true);
@@ -56,220 +151,62 @@ const LogScreen = ({ navigation, route }) => {
         setSelectedDate(newDate);
     };
 
-    useEffect(() => {
-        const fetchLogData = async () => {
-            setLoading(true);
-            const { data: { user }, error: authError } = await supabase.auth.getUser();
-            if (authError || !user) {
-                navigation.navigate('Auth');
-                return;
-            }
-            try {
-                // Format date as YYYY-MM-DD for database query
-                const dateString = selectedDate.toISOString().split('T')[0];
-                
-                const { data, error } = await supabase
-                    .from('daily_summaries')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .eq('date', dateString);
-
-                if (error) {
-                    console.error('Error fetching log data:', error);
-                    Alert.alert('Error', 'Failed to fetch log data.');
-                } else {
-                    const summaryData = data && data.length > 0 ? data[0] : null;
-                    const { data: mealData, error: mealError } = await supabase
-                        .from('meals')
-                        .select(`
-                            id,
-                            time,
-                            type,
-                            total_calories,
-                            food_items (
-                                id,
-                                name,
-                                calories,
-                                protein,
-                                carbs,
-                                fat
-                            )
-                        `)
-                        .eq('user_id', user.id)
-                        .eq('date', dateString)
-                        .order('time', { ascending: true });
-
-                    if (mealError) {
-                        console.error("Error fetching meals:", mealError);
-                        Alert.alert("Error", "Failed to fetch meals");
-                        return;
-                    }
-                    if (summaryData) {
-                        setLogData({ ...summaryData, meals: mealData });
-                        setWaterIntake(summaryData.water_intake);
-                    } else {
-                        setLogData({
-                            date: selectedDate, 
-                            total_calories: 2004, 
-                            total_protein: 0,
-                            total_carbs: 0,
-                            total_fat: 0,
-                            water_intake: 0,
-                            meals: mealData || [], 
-                        });
-                        setWaterIntake(0);
-                    }
-                }
-            } catch (error) {
-                console.error('Unexpected error:', error);
-                Alert.alert('Error', 'An unexpected error occurred.');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchLogData();
-    }, [selectedDate, navigation]); 
-
-    const handleAddWater = async () => {
-        if (isSubmitting) return;
-        
-        try {
-            setIsSubmitting(true);
-            const newIntake = Math.round(waterIntake + ozToMl(8));
-            
-            // First try to update existing record
-            const { data, error: updateError } = await supabase
-                .from('daily_summaries')
-                .update({ water_intake: newIntake })
-                .match({ 
-                    user_id: supabase.auth.user().id, 
-                    date: selectedDate.toISOString().split('T')[0] 
-                });
-
-            if (updateError) {
-                // If update fails (no existing record), insert new record
-                const { error: insertError } = await supabase
-                    .from('daily_summaries')
-                    .insert({
-                        user_id: supabase.auth.user().id,
-                        date: selectedDate.toISOString().split('T')[0],
-                        water_intake: newIntake
-                    });
-
-                if (insertError) {
-                    console.error('Error updating water intake:', insertError);
-                    Alert.alert('Error', 'Failed to update water intake');
-                    return;
-                }
-            }
-
-            setWaterIntake(newIntake);
-        } catch (error) {
-            console.error('Unexpected error:', error);
-            Alert.alert('Error', 'An unexpected error occurred');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleRemoveWater = async () => {
-        if (isSubmitting) return;
-        
-        try {
-            setIsSubmitting(true);
-            const newIntake = Math.round(Math.max(0, waterIntake - ozToMl(8)));
-            
-            // First try to update existing record
-            const { data, error: updateError } = await supabase
-                .from('daily_summaries')
-                .update({ water_intake: newIntake })
-                .match({ 
-                    user_id: supabase.auth.user().id, 
-                    date: selectedDate.toISOString().split('T')[0] 
-                });
-
-            if (updateError) {
-                // If update fails (no existing record), insert new record
-                const { error: insertError } = await supabase
-                    .from('daily_summaries')
-                    .insert({
-                        user_id: supabase.auth.user().id,
-                        date: selectedDate.toISOString().split('T')[0],
-                        water_intake: newIntake
-                    });
-
-                if (insertError) {
-                    console.error('Error updating water intake:', insertError);
-                    Alert.alert('Error', 'Failed to update water intake');
-                    return;
-                }
-            }
-
-            setWaterIntake(newIntake);
-        } catch (error) {
-            console.error('Unexpected error:', error);
-            Alert.alert('Error', 'An unexpected error occurred');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleEditMeal = (meal) => {
-        setSelectedMeal(meal);
+    const handleEditMeal = (foodItem) => {
+        setSelectedMeal(foodItem);
         setIsEditModalVisible(true);
     };
 
-    const handleDeleteMeal = async (mealId) => {
+    const handleDeleteMeal = useCallback(async (foodItemId) => {
         try {
-            const { error } = await supabase
-                .from('meal_entries')
+            // Delete the food item
+            const { error: foodItemError } = await supabase
+                .from('food_items')
                 .delete()
-                .match({ id: mealId });
+                .match({ id: foodItemId });
 
-            if (error) {
-                console.error('Error deleting meal:', error);
-                Alert.alert('Error', 'Failed to delete meal');
+            if (foodItemError) {
+                console.error('Error deleting food item:', foodItemError);
+                Alert.alert('Error', 'Failed to delete food item');
                 return;
             }
 
             // Refresh the log data
-            fetchLogData();
+            await fetchLogData();
         } catch (error) {
             console.error('Error:', error);
             Alert.alert('Error', 'An unexpected error occurred');
         }
-    };
+    }, [fetchLogData]);
 
-    const handleUpdateMeal = async (updatedMeal) => {
+    const handleUpdateMeal = useCallback(async (updatedMeal) => {
         try {
-            const { error } = await supabase
-                .from('meal_entries')
+            // Update the food item
+            const { error: foodItemError } = await supabase
+                .from('food_items')
                 .update({
                     name: updatedMeal.name,
                     calories: updatedMeal.calories,
                     protein: updatedMeal.protein,
                     carbs: updatedMeal.carbs,
-                    fat: updatedMeal.fat,
-                    type: updatedMeal.type
+                    fat: updatedMeal.fat
                 })
-                .match({ id: selectedMeal.id });
+                .match({ id: updatedMeal.id });
 
-            if (error) {
-                console.error('Error updating meal:', error);
-                Alert.alert('Error', 'Failed to update meal');
+            if (foodItemError) {
+                console.error('Error updating food item:', foodItemError);
+                Alert.alert('Error', 'Failed to update food item');
                 return;
             }
 
             setIsEditModalVisible(false);
             setSelectedMeal(null);
             // Refresh the log data
-            fetchLogData();
+            await fetchLogData();
         } catch (error) {
             console.error('Error:', error);
             Alert.alert('Error', 'An unexpected error occurred');
         }
-    };
+    }, [fetchLogData]);
 
     const ozToMl = (oz) => oz * 29.5735;
     const mlToOz = (ml) => ml / 29.5735;
