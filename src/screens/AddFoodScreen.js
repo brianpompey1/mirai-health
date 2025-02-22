@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'; // Add useCallback
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,8 @@ import {
 } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import debounce from 'lodash.debounce'; // Install lodash.debounce:  npx expo install lodash.debounce
+import debounce from 'lodash.debounce';
 import { useTheme } from '../contexts/ThemeContext';
-
-const API_KEY = 'NvuWQkWdvBXXyCf4C51INMrpBJc3OpLqYk5QUI50'; // Replace with your actual API key
-const API_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search?api_key=';
 
 const AddFoodScreen = ({ navigation, route }) => {
   const [mealType, setMealType] = useState('');
@@ -23,249 +20,231 @@ const AddFoodScreen = ({ navigation, route }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedFood, setSelectedFood] = useState(null);
-  const [quantity, setQuantity] = useState('');
+  const [servings, setServings] = useState('');
   const [foodItems, setFoodItems] = useState([]);
   const { theme } = useTheme();
 
   const { closeModal } = route.params || {};
 
-    useEffect(() => {
-        if(closeModal) {
-            closeModal();
-        }
-    }, [])
+  useEffect(() => {
+    if(closeModal) {
+      closeModal();
+    }
+  }, []);
 
-    const handleSelectFood = (food) => {
-    // Find the nutrient data for calories (per 100g)
-        let calories = 0;
-        let protein = 0;
-        let carbs = 0;
-        let fat = 0;
+  // Search foods from allowed_foods table
+  const searchFoods = async (term) => {
+    if (!term.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('allowed_foods')
+        .select('*')
+        .ilike('name', `%${term}%`)
+        .limit(10);
 
-        if (food.foodNutrients && food.foodNutrients.length > 0) {
-            for (let nutrient of food.foodNutrients) {
-              if (nutrient.nutrientName === "Energy" && nutrient.unitName === "KCAL") {
-                calories = nutrient.value || 0;
-              } else if (nutrient.nutrientName === "Protein") {
-                  protein = nutrient.value || 0
-              } else if(nutrient.nutrientName === "Carbohydrate, by difference") {
-                carbs = nutrient.value || 0;
-              } else if(nutrient.nutrientName === "Total lipid (fat)") {
-                fat = nutrient.value || 0
-              }
-            }
-        }
-
-        setSelectedFood({
-            fdcId: food.fdcId,
-            name: food.description,
-            calories: calories,
-            protein: protein,
-            carbs: carbs,
-            fat: fat
-        });
-      setSearchResults([]); // Clear results after selection
+      if (error) throw error;
+      setSearchResults(data || []);
+    } catch (error) {
+      console.error('Error searching foods:', error);
+      Alert.alert('Error', 'Failed to search foods');
+    } finally {
+      setLoading(false);
+    }
   };
-  const handleAddFood = () => {
+
+  const debouncedSearch = useCallback(debounce(searchFoods, 300), []);
+
+  const handleSearchChange = (text) => {
+    setSearchTerm(text);
+    debouncedSearch(text);
+  };
+
+  const handleSelectFood = (food) => {
+    setSelectedFood(food);
+    setSearchResults([]);
+    setSearchTerm(food.name);
+  };
+
+  const checkDailyLimits = async (category, servingsToAdd) => {
+    const date = new Date().toISOString().split('T')[0];
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const { data, error } = await supabase
+      .from('daily_food_logs')
+      .select('vegetable_servings, fruit_servings')
+      .eq('user_id', user.id)
+      .eq('date', date)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+      throw error;
+    }
+
+    const currentVegServings = data?.vegetable_servings || 0;
+    const currentFruitServings = data?.fruit_servings || 0;
+
+    if (category === 'vegetable' && currentVegServings + servingsToAdd > 2) {
+      throw new Error('You have reached your daily limit of 2 vegetable servings');
+    }
+    if (category === 'fruit' && currentFruitServings + servingsToAdd > 1) {
+      throw new Error('You have reached your daily limit of 1 fruit serving');
+    }
+  };
+
+  const handleAddFood = async () => {
     if (!selectedFood) {
       Alert.alert('Error', 'Please select a food item.');
       return;
     }
-    if (!quantity || isNaN(quantity) || parseFloat(quantity) <= 0) {
-      Alert.alert('Error', 'Please enter a valid quantity.');
+    if (!servings || isNaN(servings) || parseFloat(servings) <= 0) {
+      Alert.alert('Error', 'Please enter a valid number of servings.');
       return;
     }
-    const quantityNum = parseFloat(quantity);
 
-    // Add the selected food item to the foodItems array
-    const newFoodItem = {
-      name: selectedFood.name,
-      calories: Math.round(selectedFood.calories * quantityNum), // Calculate based on quantity
-      protein:  Math.round(selectedFood.protein * quantityNum),
-      carbs:  Math.round(selectedFood.carbs * quantityNum),
-      fat: Math.round(selectedFood.fat * quantityNum),
-    };
+    const servingsNum = parseFloat(servings);
+    
+    try {
+      // Check serving limits for vegetables and fruits
+      if (selectedFood.category === 'vegetable' || selectedFood.category === 'fruit') {
+        await checkDailyLimits(selectedFood.category, servingsNum);
+      }
 
-    setFoodItems([...foodItems, newFoodItem]);
-     setSelectedFood(null); // Clear selected food
-    setQuantity('');       // Clear quantity
-    setSearchTerm('');
+      // Calculate calories only for proteins and miscellaneous items
+      const calories = ['protein', 'miscellaneous'].includes(selectedFood.category)
+        ? selectedFood.calories_per_serving * servingsNum
+        : 0;
+
+      const newFoodItem = {
+        name: selectedFood.name,
+        servings: servingsNum,
+        allowed_food: selectedFood
+      };
+
+      setFoodItems([...foodItems, newFoodItem]);
+      setSelectedFood(null);
+      setServings('');
+      setSearchTerm('');
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
   };
 
-  const handleSaveMeal = async() => {
-     setLoading(true);
-        try {
-            const { data: { user }, error: authError } = await supabase.auth.getUser();
-            if (authError || !user) {
-                Alert.alert('Error', "You must be logged in")
-                navigation.navigate('Auth');
-                return
-            }
-
-            if(!mealType) {
-                Alert.alert("Error", "Please select a meal type")
-                return;
-            }
-            if (foodItems.length === 0) {
-                Alert.alert('Error', 'Please add at least one food item.');
-                return;
-            }
-            const date = new Date().toISOString().split("T")[0];
-            // 1. Create the Meal
-            const { data: mealData, error: mealError } = await supabase
-                .from('meals')
-                .insert([{
-                    user_id: user.id,
-                    date: new Date().toISOString().split('T')[0],
-                    time: new Date().toTimeString().split(' ')[0],
-                    type: mealType
-                }])
-                .select();
-
-            if (mealError) throw mealError;
-            const mealId = mealData[0].id;
-
-            // 2. Create the Food Items (using the mealId)
-            const foodItemsToInsert = foodItems.map((item) => ({
-                meal_id: mealId,
-                name: item.name,
-                calories: item.calories,
-                protein: item.protein,
-                carbs: item.carbs,
-                fat: item.fat
-            }));
-
-            const { error: foodItemError } = await supabase
-            .from('food_items')
-            .insert(foodItemsToInsert)
-            .select();
-
-            if (foodItemError) throw foodItemError;
-
-            // 3. Update Daily Summary
-            const { data: summaryData, error: summaryError } = await supabase
-              .from('daily_summaries')
-              .select('*')
-              .eq('user_id', user.id)
-              .eq('date', date)
-              .single();
-
-            // Calculate total nutrients for new food items
-            const totalCalories = foodItems.reduce((sum, item) => sum + item.calories, 0);
-            const totalProtein = foodItems.reduce((sum, item) => sum + item.protein, 0);
-            const totalCarbs = foodItems.reduce((sum, item) => sum + item.carbs, 0);
-            const totalFat = foodItems.reduce((sum, item) => sum + item.fat, 0);
-
-            if (summaryData) {
-                // Update existing summary
-                const { error: updateError } = await supabase
-                    .from('daily_summaries')
-                    .update({
-                        total_calories: summaryData.total_calories + totalCalories,
-                        total_protein: summaryData.total_protein + totalProtein,
-                        total_carbs: summaryData.total_carbs + totalCarbs,
-                        total_fat: summaryData.total_fat + totalFat
-                    })
-                    .eq('id', summaryData.id);
-
-                if (updateError) throw updateError;
-            } else {
-                // Create new summary
-                const { error: insertError } = await supabase
-                    .from('daily_summaries')
-                    .insert([{
-                        user_id: user.id,
-                        date: date,
-                        total_calories: totalCalories,
-                        total_protein: totalProtein,
-                        total_carbs: totalCarbs,
-                        total_fat: totalFat,
-                        water_intake: 0
-                    }]);
-
-                if (insertError) throw insertError;
-            }
-
-            Alert.alert('Success', 'Meal added successfully!');
-            // Navigate back and refresh the log screen
-            navigation.navigate('Log', { refresh: true });
-        } catch (error) {
-            console.error('Error saving meal:', error);
-            Alert.alert('Error', 'Failed to save meal. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-  // Data filtering
-    const filterFoodData = (data) => {
-        if (!data || !data.foods) {
-          return [];
-        }
-
-        const seen = new Set(); //To remove any duplicates
-        const filteredResults = [];
-
-        for (const food of data.foods) {
-             if (food.description && food.description.length <= 100 && (food.dataType === "SR Legacy" || food.dataType === "Foundation") && !seen.has(food.description)) { //Could also add branded
-                filteredResults.push(food);
-                seen.add(food.description);
-            }
-        }
-        return filteredResults;
-    }
-
-  // Debounced search function.
-  const debouncedSearch = useCallback(
-    debounce(async (searchTerm) => {
-      if (!searchTerm || searchTerm.length < 3) {
-        setSearchResults([]);
-        setLoading(false);
+  const handleSaveMeal = async () => {
+    setLoading(true);
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        Alert.alert('Error', "You must be logged in");
+        navigation.navigate('Auth');
         return;
       }
 
-      try {
-        const url = `${API_URL}${API_KEY}&query=${encodeURIComponent(searchTerm)}&dataType=Foundation,SR%20Legacy&pageSize=20`;
-        console.log('Attempting to fetch from URL:', url);
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          console.error('Response not OK:', {
-            status: response.status,
-            statusText: response.statusText
-          });
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('API Response received:', { 
-          totalHits: data.totalHits,
-          foodsCount: data.foods?.length 
-        });
-        
-        const filteredData = filterFoodData(data);
-        setSearchResults(filteredData);
-      } catch (error) {
-        console.error('Search error details:', {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
-        });
-        Alert.alert('Error', `Failed to search for food: ${error.message}`);
-      } finally {
-        setLoading(false);
+      if (!mealType) {
+        Alert.alert("Error", "Please select a meal type");
+        return;
       }
-    }, 300), // 300ms delay
-    []
-  );
+      if (foodItems.length === 0) {
+        Alert.alert('Error', 'Please add at least one food item.');
+        return;
+      }
 
-  useEffect(() => {
-    if (searchTerm) {
-      setLoading(true);
-      debouncedSearch(searchTerm);
+      const date = new Date().toISOString().split('T')[0];
+
+      // 1. Create or update daily_food_logs
+      const { data: logData, error: logError } = await supabase
+        .from('daily_food_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', date)
+        .single();
+
+      if (logError && logError.code !== 'PGRST116') throw logError;
+
+      const vegServings = foodItems
+        .filter(item => item.allowed_food.category === 'vegetable')
+        .reduce((sum, item) => sum + item.servings, 0);
+      
+      const fruitServings = foodItems
+        .filter(item => item.allowed_food.category === 'fruit')
+        .reduce((sum, item) => sum + item.servings, 0);
+      
+      const proteinCalories = foodItems
+        .filter(item => item.allowed_food.category === 'protein')
+        .reduce((sum, item) => sum + item.allowed_food.calories_per_serving * item.servings, 0);
+
+      const miscCalories = foodItems
+        .filter(item => item.allowed_food.category === 'miscellaneous')
+        .reduce((sum, item) => sum + item.allowed_food.calories_per_serving * item.servings, 0);
+
+      if (logData) {
+        // Update existing log
+        const { error: updateError } = await supabase
+          .from('daily_food_logs')
+          .update({
+            vegetable_servings: logData.vegetable_servings + vegServings,
+            fruit_servings: logData.fruit_servings + fruitServings,
+            total_protein_calories: logData.total_protein_calories + proteinCalories + miscCalories
+          })
+          .eq('id', logData.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new log
+        const { error: insertError } = await supabase
+          .from('daily_food_logs')
+          .insert([{
+            user_id: user.id,
+            date: date,
+            vegetable_servings: vegServings,
+            fruit_servings: fruitServings,
+            total_protein_calories: proteinCalories + miscCalories
+          }]);
+
+        if (insertError) throw insertError;
+      }
+
+      // 2. Create the Meal
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+      
+      const { data: mealData, error: mealError } = await supabase
+        .from('meals')
+        .insert([{
+          user_id: user.id,
+          date: date,
+          type: mealType,
+          time: timeStr // Format time as HH:MM:SS
+        }])
+        .select();
+
+      if (mealError) throw mealError;
+
+      // 3. Create the Food Items
+      const foodItemsToInsert = foodItems.map(item => ({
+        meal_id: mealData[0].id,
+        name: item.name,
+        servings: item.servings
+      }));
+
+      const { error: foodItemError } = await supabase
+        .from('food_items')
+        .insert(foodItemsToInsert);
+
+      if (foodItemError) throw foodItemError;
+
+      Alert.alert('Success', 'Meal added successfully!');
+      navigation.navigate('Log', { refresh: true });
+    } catch (error) {
+      console.error('Error saving meal:', error);
+      Alert.alert('Error', 'Failed to save meal. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  }, [searchTerm, debouncedSearch]); // Call whenever searchTerm changes
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -291,7 +270,7 @@ const AddFoodScreen = ({ navigation, route }) => {
             style={[styles.searchInput, { backgroundColor: theme.background }]}
             placeholder="Search for a food..."
             value={searchTerm}
-            onChangeText={setSearchTerm}
+            onChangeText={handleSearchChange}
           />
           <TouchableOpacity
             style={[styles.searchButton, { backgroundColor: theme.background }]}
@@ -311,19 +290,11 @@ const AddFoodScreen = ({ navigation, route }) => {
             {selectedFood && (
               <View style={[styles.selectedFoodContainer, { backgroundColor: theme.background }]}>
                 <Text style={[styles.selectedFoodName, { color: theme.text }]}>{selectedFood.name}</Text>
-                <View style={styles.macroRow}>
-                  <Text style={[styles.selectedFoodInfo, { color: theme.text }]}>Calories: {selectedFood.calories}</Text>
-                  <Text style={[styles.selectedFoodInfo, { color: theme.text }]}>Protein: {selectedFood.protein}g</Text>
-                </View>
-                <View style={styles.macroRow}>
-                  <Text style={[styles.selectedFoodInfo, { color: theme.text }]}>Carbs: {selectedFood.carbs}g</Text>
-                  <Text style={[styles.selectedFoodInfo, { color: theme.text }]}>Fat: {selectedFood.fat}g</Text>
-                </View>
                 <TextInput
                   style={[styles.input, { backgroundColor: theme.background }]}
-                  placeholder="Quantity (e.g., 1 cup, 100g, 2)"
-                  value={quantity}
-                  onChangeText={setQuantity}
+                  placeholder="Servings"
+                  value={servings}
+                  onChangeText={setServings}
                   keyboardType="numeric"
                 />
                 <TouchableOpacity
@@ -344,13 +315,13 @@ const AddFoodScreen = ({ navigation, route }) => {
                     style={[styles.searchResultItem, { backgroundColor: theme.background }]} 
                     onPress={() => handleSelectFood(item)}
                   >
-                    <Text style={[styles.foodName, { color: theme.text }]}>{item.description}</Text>
+                    <Text style={[styles.foodName, { color: theme.text }]}>{item.name}</Text>
                     <Text style={[styles.foodInfo, { color: theme.text }]}>
-                      {item.foodCategory || ''}
+                      {item.category || ''}
                     </Text>
                   </TouchableOpacity>
                 )}
-                keyExtractor={item => item.fdcId.toString()}
+                keyExtractor={item => item.id.toString()}
                 ListEmptyComponent={
                   <Text style={[styles.emptyText, { color: theme.text }]}>No foods found.</Text>
                 }
@@ -362,7 +333,7 @@ const AddFoodScreen = ({ navigation, route }) => {
                   data={foodItems}
                   renderItem={({ item }) => (
                     <View style={[styles.foodItem, { backgroundColor: theme.background }]}>
-                      <Text style={[styles.foodItemText, { color: theme.text }]}>{item.name} - {item.calories} cal</Text>
+                      <Text style={[styles.foodItemText, { color: theme.text }]}>{item.name} - {item.servings} servings</Text>
                     </View>
                   )}
                   keyExtractor={(item, index) => index.toString()}
@@ -521,16 +492,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'sans-serif-medium',
     marginBottom: 5
-  },
-  selectedFoodInfo: {
-    fontSize: 14,
-    fontFamily: 'sans-serif',
-    marginRight: 10
-  },
-  macroRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 5,
   },
   foodItem: {
     flexDirection: 'row',

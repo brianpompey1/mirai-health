@@ -88,75 +88,74 @@ const DashboardScreen = () => {
         try {
           const { data, error } = await supabase
             .from('meals')
-            .select(
-              `
+            .select(`
               id,
               time,
               type,
-              total_calories,
               food_items (
-                  id,
-                  name,
-                  calories,
-                  protein,
-                  carbs,
-                  fat
+                id,
+                name,
+                servings
               )
-            `
-            )
+            `)
             .eq('user_id', userId)
-            .eq('date', new Date().toISOString().split('T')[0]) // Today's meals
+            .eq('date', new Date().toISOString().split('T')[0])
             .order('time', { ascending: true });
 
           if (error) {
             console.error('Error fetching meals:', error);
-            Alert.alert('Error', 'Failed to fetch meals.');
+            Alert.alert('Error', 'Failed to fetch meals');
             return;
           }
 
-          // Transform data into the desired format for MealCard components.
-          const transformedMeals = data.reduce((acc, meal) => {
+          // Transform meals data for MealCard
+          const transformedMeals = data?.reduce((acc, meal) => {
             const mealType = meal.type;
-            const mealItems = meal.food_items.map((item) => ({
-              name: item.name,
-              calories: item.calories,
-              protein: item.protein || 0,
-              carbs: item.carbs || 0,
-              fat: item.fat || 0
-            }));
-
             if (!acc[mealType]) {
               acc[mealType] = {
-                name: mealType.charAt(0).toUpperCase() + mealType.slice(1), // Capitalize
-                items: mealItems,
+                name: mealType.charAt(0).toUpperCase() + mealType.slice(1),
+                items: []
               };
-            } else {
-              acc[mealType].items = [...acc[mealType].items, ...mealItems];
             }
+            
+            meal.food_items?.forEach(item => {
+              acc[mealType].items.push({
+                name: item.name,
+                servings: item.servings,
+                calories: 0, // We don't have calories in food_items table
+                protein: 0,  // We don't track macros
+                carbs: 0,
+                fat: 0
+              });
+            });
+            
             return acc;
           }, {});
-          const mealsArray = Object.values(transformedMeals);
-          setMeals(mealsArray);
 
-          // Calculate totals
-          let totalCals = 0;
-          let totalProtein = 0;
-          let totalCarbs = 0;
-          let totalFat = 0;
+          setMeals(Object.values(transformedMeals || {}));
 
-          data?.forEach((meal) => {
-            meal.food_items?.forEach((item) => {
-              totalCals += item.calories || 0;
-              totalProtein += item.protein || 0;
-              totalCarbs += item.carbs || 0;
-              totalFat += item.fat || 0;
-            });
-          });
+          // Get the daily food log to calculate totals
+          const { data: logData, error: logError } = await supabase
+            .from('daily_food_logs')
+            .select('total_protein_calories, vegetable_servings, fruit_servings')
+            .eq('user_id', userId)
+            .eq('date', new Date().toISOString().split('T')[0])
+            .single();
 
-          setCaloriesConsumed(totalCals);
-          setProtein(totalProtein);
-          setCarbs(totalCarbs);
-          setFat(totalFat);
+          if (logError && logError.code !== 'PGRST116') {
+            console.error('Error fetching daily log:', logError);
+            Alert.alert('Error', 'Failed to fetch daily totals');
+            return;
+          }
+
+          // Set the totals from the daily log
+          if (logData) {
+            setCaloriesConsumed(logData.total_protein_calories || 0);
+            setProtein((logData.total_protein_calories || 0) / 4); // Assuming 4 calories per gram of protein
+          } else {
+            setCaloriesConsumed(0);
+            setProtein(0);
+          }
 
           //Fetch water data.
           const {data: waterData, error: waterError} = await supabase

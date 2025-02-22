@@ -66,7 +66,7 @@ const ProfileScreen = ({ navigation, route }) => {
       // Fetch user profile data
       const { data: profileData, error: profileError } = await supabase
         .from('users')
-        .select('first_name, profile_picture, assigned_diet_plan_id, start_weight')
+        .select('first_name, profile_picture, start_weight')
         .eq('id', user.id)
         .single();
 
@@ -76,20 +76,28 @@ const ProfileScreen = ({ navigation, route }) => {
         setUserName(profileData.first_name);
         setProfilePicture(profileData.profile_picture);
         if (profileData.start_weight) {
-          setStartWeight(profileData.start_weight); // Set start_weight
+          setStartWeight(profileData.start_weight);
         }
+      }
 
-        if (profileData.assigned_diet_plan_id) {
-          const { data: dietData, error: dietError } = await supabase
-            .from('diet_plans')
-            .select('*')
-            .eq('id', profileData.assigned_diet_plan_id)
-            .single();
+      // Fetch diet plan separately from user_diet_plans table
+      const { data: dietPlanData, error: dietPlanError } = await supabase
+        .from('user_diet_plans')
+        .select(`
+          diet_plans (
+            id,
+            name,
+            description,
+            daily_protein_calories,
+            daily_vegetable_servings,
+            daily_fruit_servings
+          )
+        `)
+        .eq('user_id', user.id)
+        .single();
 
-          if (!dietError && dietData) {
-            setCurrentDietPlan(dietData);
-          }
-        }
+      if (!dietPlanError && dietPlanData?.diet_plans) {
+        setCurrentDietPlan(dietPlanData.diet_plans);
       }
 
       // Fetch weight progress
