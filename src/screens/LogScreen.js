@@ -7,7 +7,7 @@ import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useTheme } from '../contexts/ThemeContext';
 
 
-const LogScreen = ({ navigation }) => {
+const LogScreen = ({ navigation, route }) => {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
     const [logData, setLogData] = useState(null);
@@ -19,6 +19,15 @@ const LogScreen = ({ navigation }) => {
     const [selectedMeal, setSelectedMeal] = useState(null);
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     const { theme } = useTheme();
+
+    // Add useEffect to handle refresh parameter
+    useEffect(() => {
+        if (route.params?.refresh) {
+            fetchLogData();
+            // Clear the refresh parameter
+            navigation.setParams({ refresh: undefined });
+        }
+    }, [route.params?.refresh]);
 
     const showDatePicker = () => {
         setDatePickerVisibility(true);
@@ -473,94 +482,107 @@ const LogScreen = ({ navigation }) => {
         );
     }
 
-    // Transform meals data
+    // Transform meals data into the same format as DashboardScreen
     const transformedMeals = logData?.meals?.reduce((acc, meal) => {
-        const mealType = meal.type;
+        const mealType = meal.type || 'Other';
+        const mealItems = meal.food_items?.map((item) => ({
+            id: item.id,
+            name: item.name,
+            calories: item.calories || 0,
+            protein: item.protein || 0,
+            carbs: item.carbs || 0,
+            fat: item.fat || 0
+        })) || [];
+
         if (!acc[mealType]) {
             acc[mealType] = {
                 type: mealType,
-                totalCalories: 0,
-                items: []
+                name: mealType.charAt(0).toUpperCase() + mealType.slice(1),
+                items: mealItems,
+                totalCalories: mealItems.reduce((sum, item) => sum + item.calories, 0)
             };
+        } else {
+            acc[mealType].items = [...acc[mealType].items, ...mealItems];
+            acc[mealType].totalCalories = acc[mealType].items.reduce((sum, item) => sum + item.calories, 0);
         }
-        
-        meal.food_items.forEach(item => {
-            acc[mealType].items.push({
-                id: item.id,
-                name: item.name,
-                calories: item.calories || 0,
-                protein: item.protein || 0,
-                carbs: item.carbs || 0,
-                fat: item.fat || 0,
-                type: mealType
-            });
-            acc[mealType].totalCalories += item.calories || 0;
-        });
         
         return acc;
     }, {}) || {};
 
     const mealsArray = Object.values(transformedMeals);
-    const totalCaloriesConsumed = mealsArray.reduce((total, meal) => total + meal.totalCalories, 0);
-    const remainingCalories = logData?.total_calories ? logData.total_calories - totalCaloriesConsumed : 2004 - totalCaloriesConsumed;
+
+    // Calculate totals the same way as DashboardScreen
+    let totalCaloriesConsumed = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+
+    mealsArray.forEach((meal) => {
+        totalCaloriesConsumed += meal.totalCalories;
+        totalProtein += meal.items.reduce((sum, item) => sum + item.protein, 0);
+        totalCarbs += meal.items.reduce((sum, item) => sum + item.carbs, 0);
+        totalFat += meal.items.reduce((sum, item) => sum + item.fat, 0);
+    });
+
+    // Get the daily calorie goal from the user's profile or use default
+    const dailyCalorieGoal = 2004; // This should be fetched from user settings
+    const remainingCalories = dailyCalorieGoal - totalCaloriesConsumed;
 
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <ScrollView style={styles.container}>
-                <View style={styles.dateHeader}>
+      <SafeAreaView style={[styles.safeArea, {backgroundColor: theme.background}]}>
+            <ScrollView style={[styles.container, {backgroundColor: theme.background}]}>
+                <View style={[styles.dateHeader, {backgroundColor: theme.background}]}>
                     <TouchableOpacity 
-                        style={styles.dateArrow}
+                        style={[styles.dateArrow, {backgroundColor: theme.background}]}
                         onPress={() => handleDateChange(-1)}
                     >
-                        <Ionicons name="chevron-back" size={24} color="#007AFF" />
+                        <Ionicons name="chevron-back" size={24} color={theme.text} />
                     </TouchableOpacity>
                     
                     <TouchableOpacity 
-                        style={styles.dateContainer}
+                        style={[styles.dateContainer, {backgroundColor: theme.background}]}
                         onPress={showDatePicker}
                     >
-                        <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
+                        <Text style={[styles.dateText, {color: theme.text}]}>{formatDate(selectedDate)}</Text>
                         {selectedDate.toDateString() === new Date().toDateString() && (
-                            <Text style={styles.todayLabel}>Today</Text>
+                            <Text style={[styles.todayLabel, {color: theme.text}]}>Today</Text>
                         )}
                     </TouchableOpacity>
 
                     <TouchableOpacity 
-                        style={styles.dateArrow}
+                        style={[styles.dateArrow, {backgroundColor: theme.background}]}
                         onPress={() => handleDateChange(1)}
                     >
-                        <Ionicons name="chevron-forward" size={24} color="#007AFF" />
+                        <Ionicons name="chevron-forward" size={24} color={theme.text} />
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.caloriesSummary}>
-                    <View style={styles.calorieCard}>
-                        <Text style={styles.calorieLabel}>Daily Goal</Text>
-                        <Text style={styles.calorieValue}>{logData?.total_calories || 2004}</Text>
-                        <Text style={styles.calorieUnit}>cal</Text>
+                <View style={[styles.caloriesSummary, {backgroundColor: theme.cardBackground}]}>
+                    <View style={[styles.calorieCard, {backgroundColor: theme.cardBackground}]}>
+                        <Text style={[styles.calorieLabel, {color: theme.text}]}>Daily Goal</Text>
+                        <Text style={[styles.calorieValue, {color: theme.text}]}>{dailyCalorieGoal}</Text>
+                        <Text style={[styles.calorieUnit, {color: theme.text}]}>cal</Text>
                     </View>
-                    <View style={[styles.calorieCard, styles.middleCard]}>
-                        <Text style={styles.calorieLabel}>Consumed</Text>
-                        <Text style={styles.calorieValue}>{totalCaloriesConsumed}</Text>
-                        <Text style={styles.calorieUnit}>cal</Text>
+                    <View style={[styles.calorieCard, styles.middleCard, {backgroundColor: theme.cardBackground}]}>
+                        <Text style={[styles.calorieLabel, {color: theme.text}]}>Consumed</Text>
+                        <Text style={[styles.calorieValue, {color: theme.text}]}>{totalCaloriesConsumed}</Text>
+                        <Text style={[styles.calorieUnit, {color: theme.text}]}>cal</Text>
                     </View>
-                    <View style={[styles.calorieCard, remainingCalories < 0 ? styles.calorieCardWarning : null]}>
-                        <Text style={styles.calorieLabel}>Remaining</Text>
-                        <Text style={[styles.calorieValue, remainingCalories < 0 ? styles.calorieValueWarning : null]}>
-                            {remainingCalories}
-                        </Text>
-                        <Text style={[styles.calorieUnit, remainingCalories < 0 ? styles.calorieValueWarning : null]}>cal</Text>
+                    <View style={[styles.calorieCard, {backgroundColor: theme.cardBackground}]}>
+                        <Text style={[styles.calorieLabel, {color: theme.text}]}>Remaining</Text>
+                        <Text style={[styles.calorieValue, remainingCalories < 0 ? styles.calorieValueWarning : null, {color: theme.text}]}>{remainingCalories}</Text>
+                        <Text style={[styles.calorieUnit, remainingCalories < 0 ? styles.calorieValueWarning : null, {color: theme.text}]}>cal</Text>
                     </View>
                 </View>
 
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Meals</Text>
+                <View style={[styles.section, {backgroundColor: theme.cardBackground}]}>
+                    <Text style={[styles.sectionTitle, {color: theme.text}]}>Meals</Text>
                     {mealsArray.length > 0 ?
                         (mealsArray.map((meal, index) => (
-                            <View key={index} style={styles.mealSection}>
-                                <View style={styles.mealHeader}>
-                                    <Text style={styles.mealName}>{meal.type}</Text>
-                                    <Text style={styles.suggestedCalories}>Total Calories: {meal.totalCalories}</Text>
+                            <View key={index} style={[styles.mealSection, {backgroundColor: theme.cardBackground}]}>
+                                <View style={[styles.mealHeader, {backgroundColor: theme.cardBackground}]}>
+                                    <Text style={[styles.mealName, {color: theme.text}]}>{meal.type}</Text>
+                                    <Text style={[styles.suggestedCalories, {color: theme.text}]}>Total Calories: {meal.totalCalories}</Text>
                                 </View>
                                 {meal.items.length > 0 ? (
                                     meal.items.map((item, index) => (
@@ -569,23 +591,23 @@ const LogScreen = ({ navigation }) => {
                                         </GestureHandlerRootView>
                                     ))
                                 ) : (
-                                    <TouchableOpacity style={styles.addButton}>
-                                        <Text style={styles.addButtonText}>ADD {meal.type.toUpperCase()}</Text>
+                                    <TouchableOpacity style={[styles.addButton, {backgroundColor: theme.cardBackground}]} onPress={() => handleAddMeal(meal.type)}>
+                                        <Text style={[styles.addButtonText, {color: theme.text}]}>ADD {meal.type.toUpperCase()}</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
                         ))) :
-                        (<View style={styles.mealSection}>
-                            <View style={styles.mealHeader}>
-                                <Text style={styles.mealName}>No Meals Logged</Text>
+                        (<View style={[styles.mealSection, {backgroundColor: theme.cardBackground}]}>
+                            <View style={[styles.mealHeader, {backgroundColor: theme.cardBackground}]}>
+                                <Text style={[styles.mealName, {color: theme.text}]}>No Meals Logged</Text>
                             </View>
                         </View>)
                     }
 
-                    <View style={styles.waterSection}>
-                        <Text style={styles.waterLabel}>Water Intake</Text>
-                        <Text style={styles.waterValue}>{mlToOz(waterIntake).toFixed(2)} oz</Text>
-                        <Text style={styles.waterGoal}>Goal: {waterGoal} oz</Text>
+                    <View style={[styles.waterSection, {backgroundColor: theme.cardBackground}]}>
+                        <Text style={[styles.waterLabel, {color: theme.text}]}>Water Intake</Text>
+                        <Text style={[styles.waterValue, {color: theme.text}]}>{mlToOz(waterIntake).toFixed(2)} oz</Text>
+                        <Text style={[styles.waterGoal, {color: theme.text}]}>Goal: {waterGoal} oz</Text>
                         {/* <View style={{flexDirection: 'row'}}>
                             <TouchableOpacity onPress={handleRemoveWater}>
                                 <Text style={{fontSize: 18, color: 'blue'}}> - </Text>

@@ -144,9 +144,9 @@ const DashboardScreen = () => {
           let totalCarbs = 0;
           let totalFat = 0;
 
-          data.forEach((meal) => {
-            meal.food_items.forEach((item) => {
-              totalCals += item.calories;
+          data?.forEach((meal) => {
+            meal.food_items?.forEach((item) => {
+              totalCals += item.calories || 0;
               totalProtein += item.protein || 0;
               totalCarbs += item.carbs || 0;
               totalFat += item.fat || 0;
@@ -417,7 +417,7 @@ const DashboardScreen = () => {
         {/* Exercise Section */}
         <View style={[styles.card, {backgroundColor: theme.cardBackground}]}>
           <Text style={[styles.cardTitle, {color: theme.text}]}>Today's Exercise</Text>
-          <View style={styles.exerciseInputContainer}>
+          <View style={[styles.exerciseInputContainer, {backgroundColor: theme.cardBackground}]}>
             <TextInput
               style={[styles.exerciseInput, {color: theme.text}]}
               placeholder="What exercise did you do today?"
@@ -429,7 +429,8 @@ const DashboardScreen = () => {
             <TouchableOpacity 
               style={[
                 styles.addButton, 
-                (!exercise.trim() || isSubmitting) && styles.addButtonDisabled
+                {backgroundColor: theme.buttonBackground}, 
+                (!exercise.trim() || isSubmitting) && {backgroundColor: theme.disabledButtonBackground}
               ]}
               onPress={handleSaveExercise}
               disabled={!exercise.trim() || isSubmitting}

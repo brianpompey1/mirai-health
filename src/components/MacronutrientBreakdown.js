@@ -1,7 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const MacronutrientBreakdown = ({ protein, carbs, fat }) => {
+  const { theme } = useTheme();
+
     const total = protein + carbs + fat;
     const proteinPercent = total > 0 ? (protein / total) * 100 : 0;
     const carbsPercent = total > 0 ? (carbs / total) * 100 : 0;
@@ -9,18 +12,18 @@ const MacronutrientBreakdown = ({ protein, carbs, fat }) => {
 
 
   return (
-    <View style={styles.container}>
-      <View style={styles.macroRow}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.macroRow, { backgroundColor: theme.background }]}>
         <View style={[styles.macroBar, { width: `${proteinPercent}%`, backgroundColor: 'orange' }]} />
-        <Text style={styles.macroLabel}>Protein: {protein}g</Text>
+        <Text style={[styles.macroLabel, { color: theme.text }]}>Protein: {protein}g</Text>
       </View>
-      <View style={styles.macroRow}>
+      <View style={[styles.macroRow, { backgroundColor: theme.background }]}>
         <View style={[styles.macroBar, { width: `${carbsPercent}%`, backgroundColor: 'green' }]} />
-        <Text style={styles.macroLabel}>Carbs: {carbs}g</Text>
+        <Text style={[styles.macroLabel, { color: theme.text }]}>Carbs: {carbs}g</Text>
       </View>
-      <View style={styles.macroRow}>
+      <View style={[styles.macroRow, { backgroundColor: theme.background }]}>
         <View style={[styles.macroBar, { width: `${fatPercent}%`, backgroundColor: 'blue' }]} />
-        <Text style={styles.macroLabel}>Fat: {fat}g</Text>
+        <Text style={[styles.macroLabel, { color: theme.text }]}>Fat: {fat}g</Text>
       </View>
     </View>
   );

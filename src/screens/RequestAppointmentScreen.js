@@ -1,27 +1,28 @@
-import React, { useState, useEffect } from 'react'; // Import useEffect
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../utils/supabase';
+import { useTheme } from '../contexts/ThemeContext';
 
-const RequestAppointmentScreen = ({ navigation, route }) => { // Get route
+const RequestAppointmentScreen = ({ navigation, route }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [notes, setNotes] = useState('');
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [isTimePickerVisible, setTimePickerVisibility] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { theme } = useTheme();
 
-    // Get the closeModal function from the route params
-    const { closeModal } = route.params || {};
+  // Get the closeModal function from the route params
+  const { closeModal } = route.params || {};
 
-    // Use useEffect to close the AddActionModal when this screen mounts
-    useEffect(() => {
-      if (closeModal) {
-        closeModal();
-      }
-    }, [closeModal]);
-
+  // Use useEffect to close the AddActionModal when this screen mounts
+  useEffect(() => {
+    if (closeModal) {
+      closeModal();
+    }
+  }, [closeModal]);
 
   const showDatePicker = () => {
     setDatePickerVisibility(true);
@@ -109,143 +110,121 @@ const RequestAppointmentScreen = ({ navigation, route }) => { // Get route
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Request Appointment</Text>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.section, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+        <Text style={[styles.label, { color: theme.text }]}>Select Date and Time</Text>
+        
+        <TouchableOpacity 
+          style={[styles.pickerButton, { backgroundColor: theme.touchableBackground }]} 
+          onPress={showDatePicker}
+        >
+          <Text style={[styles.pickerButtonText, { color: theme.text }]}>{formatDate(selectedDate)}</Text>
+          <Ionicons name="calendar" size={24} color={theme.primary} />
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.dateTimeButton} onPress={showDatePicker}>
-        <Text style={styles.dateTimeButtonText}>{formatDate(selectedDate)}</Text>
-        <Ionicons name="calendar-outline" size={24} color="#007AFF" />
-      </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.pickerButton, { backgroundColor: theme.touchableBackground }]} 
+          onPress={showTimePicker}
+        >
+          <Text style={[styles.pickerButtonText, { color: theme.text }]}>{formatTime(selectedTime)}</Text>
+          <Ionicons name="time" size={24} color={theme.primary} />
+        </TouchableOpacity>
+
+        <Text style={[styles.label, { color: theme.text }]}>Notes</Text>
+        <TextInput
+          style={[styles.input, { 
+            backgroundColor: theme.touchableBackground,
+            color: theme.text,
+            borderColor: theme.border 
+          }]}
+          placeholder="Add any notes or special requests..."
+          placeholderTextColor={theme.textSecondary}
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+        />
+
+        <TouchableOpacity 
+          style={[styles.submitButton, { backgroundColor: theme.buttonBackground }]}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          <Text style={[styles.submitButtonText, { color: theme.primary }]}>
+            {loading ? 'Requesting...' : 'Request Appointment'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <DateTimePickerModal
         isVisible={isDatePickerVisible}
         mode="date"
         onConfirm={handleDateConfirm}
         onCancel={hideDatePicker}
         minimumDate={new Date()}
-        isDarkModeEnabled={false}
+        isDarkModeEnabled={theme.dark}
         display="inline"
-        themeVariant="light"
-        accentColor="#007AFF"
+        themeVariant={theme.dark ? "dark" : "light"}
       />
 
-      <TouchableOpacity style={styles.dateTimeButton} onPress={showTimePicker}>
-        <Text style={styles.dateTimeButtonText}>{formatTime(selectedTime)}</Text>
-        <Ionicons name="time-outline" size={24} color="#007AFF" />
-      </TouchableOpacity>
       <DateTimePickerModal
         isVisible={isTimePickerVisible}
         mode="time"
         onConfirm={handleTimeConfirm}
         onCancel={hideTimePicker}
         is24Hour={false}
-        isDarkModeEnabled={false}
+        isDarkModeEnabled={theme.dark}
         display="spinner"
-        themeVariant="light"
-        accentColor="#007AFF"
+        themeVariant={theme.dark ? "dark" : "light"}
       />
-
-      <Text style={styles.label}>Notes (Optional):</Text>
-      <TextInput
-        style={styles.notesInput}
-        value={notes}
-        onChangeText={setNotes}
-        placeholder="Add any notes about your appointment request..."
-        multiline
-        numberOfLines={4}
-        textAlignVertical="top"
-      />
-
-      <TouchableOpacity
-        style={styles.submitButton}
-        onPress={handleSubmit}
-        disabled={loading}
-      >
-        <Text style={styles.submitButtonText}>
-          {loading ? 'Submitting...' : 'Request Appointment'}
-        </Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
     padding: 20,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 30,
-    color: '#333',
-    textAlign: 'center',
-  },
-  dateTimeButton: {
-    backgroundColor: 'white',
+  section: {
     borderRadius: 12,
-    padding: 18,
-    marginVertical: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  dateTimeButtonText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
   },
   label: {
     fontSize: 16,
-    fontWeight: '600',
-    marginTop: 20,
+    fontFamily: 'sans-serif-medium',
     marginBottom: 10,
-    color: '#333',
   },
-  notesInput: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+  pickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  pickerButtonText: {
+    fontSize: 16,
+    fontFamily: 'sans-serif',
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
     padding: 15,
     marginBottom: 20,
-    minHeight: 100,
+    height: 100,
     textAlignVertical: 'top',
-    fontSize: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    fontFamily: 'sans-serif',
   },
   submitButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    padding: 18,
+    padding: 15,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 30,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
   },
   submitButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontFamily: 'sans-serif-medium',
   },
 });
 

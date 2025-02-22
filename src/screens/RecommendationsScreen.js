@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, SectionList } from 'react-native';
 import RecipeCard from '../components/RecipeCard';
 import ArticleCard from '../components/ArticleCard';
+import { useTheme } from '../contexts/ThemeContext';
 
 const RecommendationsScreen = () => {
+  const { theme } = useTheme();
+
   // Placeholder data (replace with data from your API)
   const [recipes, setRecipes] = useState([
     {
@@ -65,15 +68,15 @@ const RecommendationsScreen = () => {
   ];
 
   const renderSectionHeader = ({ section }) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{section.title}</Text>
+    <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>{section.title}</Text>
     </View>
   );
 
   const renderItem = ({ item, section }) => section.renderItem({ item });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <SectionList
         sections={sections}
         renderItem={renderItem}

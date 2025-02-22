@@ -21,23 +21,23 @@ const AddActionModal = ({ isVisible, onClose, onAddFood }) => {
       backdropOpacity={0.5}
       style={styles.modal}
     >
-      <View style={styles.content}>
+      <View style={[styles.content, { backgroundColor: theme.background }]}>
         <View style={styles.dragHandle} />
         
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: theme.background }]}>
           <Text style={[styles.title, {color: theme.text}]}>Add Food</Text>
           <Text style={[styles.subtitle, {color: theme.text}]}>Log your meals to track your nutrition</Text>
         </View>
 
-        <TouchableOpacity style={styles.addFoodButton} onPress={onAddFood}>
-          <View style={styles.buttonContent}>
+        <TouchableOpacity style={[styles.addFoodButton, { backgroundColor: theme.background }]} onPress={onAddFood}>
+          <View style={[styles.buttonContent, { backgroundColor: theme.background }]}>
             <Ionicons name="fast-food-outline" size={24} color="white" />
             <Text style={[styles.buttonText, {color: theme.text}]}>Add Food Item</Text>
           </View>
           <Ionicons name="chevron-forward" size={24} color="white" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+        <TouchableOpacity style={[styles.cancelButton, { backgroundColor: theme.background }]} onPress={onClose}>
           <Text style={[styles.cancelButtonText, {color: theme.text}]}>Cancel</Text>
         </TouchableOpacity>
       </View>

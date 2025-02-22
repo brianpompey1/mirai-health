@@ -1,13 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const DashboardHeader = ({ userName, profilePicture }) => {
+  const { theme } = useTheme();
+  
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Image source={profilePicture ? {uri: profilePicture} : require('../assets/images/placeholder-profile.png')} style={styles.profileImage} />
-      <View style={styles.textContainer}>
-        <Text style={styles.greeting}>Welcome back,</Text>
-        <Text style={styles.userName}>{userName}</Text>
+      <View style={[styles.textContainer, { backgroundColor: theme.background }]}>
+        <Text style={[styles.greeting, { color: theme.text }]}>Welcome back,</Text>
+        <Text style={[styles.userName, { color: theme.text }]}>{userName}</Text>
       </View>
     </View>
   );

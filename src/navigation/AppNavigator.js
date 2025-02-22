@@ -11,37 +11,42 @@ import ProfileNavigator from './ProfileNavigator';
 import AddFoodScreen from '../screens/AddFoodScreen';
 import { Ionicons } from '@expo/vector-icons';
 import AddActionModal from '../components/AddActionModal';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const CustomTabBarButton = ({ onPress, children }) => (
-  <TouchableOpacity
-    style={{
-      top: -5,
-      justifyContent: 'center',
-      alignItems: 'center',
-      ...styles.shadow,
-    }}
-    onPress={onPress}
-  >
-    <View
+const CustomTabBarButton = ({ onPress, children }) => {
+  const { theme } = useTheme();
+  return (
+    <TouchableOpacity
       style={{
-        width: 50,
-        height: 50,
-        borderRadius: 35,
-        backgroundColor: '#007AFF',
+        top: -5,
         justifyContent: 'center',
         alignItems: 'center',
+        ...styles.shadow,
       }}
+      onPress={onPress}
     >
-      {children}
-    </View>
-  </TouchableOpacity>
-);
+      <View
+        style={{
+          width: 50,
+          height: 50,
+          borderRadius: 35,
+          backgroundColor: theme.primary,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        {children}
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 const TabNavigator = () => {
   const [isAddModalVisible, setAddModalVisible] = useState(false);
+  const { theme } = useTheme();
   const navigation = useNavigation();
 
   const toggleAddModal = useCallback(() => {
@@ -84,8 +89,19 @@ const TabNavigator = () => {
 
             return <Ionicons name={iconName} size={size} color={color} />;
           },
-          tabBarActiveTintColor: '#007AFF',
-          tabBarInactiveTintColor: 'gray',
+          tabBarActiveTintColor: theme.tabBarActive,  // Use theme colors
+          tabBarInactiveTintColor: theme.tabBarInactive, // Use theme colors
+          tabBarStyle: {
+            backgroundColor: theme.cardBackground,
+            borderTopColor: theme.border,
+            height: 70,
+            paddingBottom: 8,
+            paddingTop: 8,
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0
+          },
           headerShown: false,
           tabBarShowLabel: false,
         })}

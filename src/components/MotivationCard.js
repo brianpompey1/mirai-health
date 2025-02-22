@@ -1,17 +1,20 @@
 import React from 'react';
 import { View, Text, StyleSheet, ImageBackground } from 'react-native'; // Use ImageBackground
+import { useTheme } from '../contexts/ThemeContext';
 
 const MotivationCard = ({ quote, author, backgroundImage }) => {
+  const { theme } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ImageBackground
         source={backgroundImage ? { uri: backgroundImage } : require('../assets/images/placeholder-motivation.jpg')} // Use ImageBackground
         style={styles.backgroundImage}
         imageStyle={styles.imageStyle} // Apply border radius to the image itself
       >
         <View style={styles.overlay} />
-        <Text style={styles.quote}>{quote}</Text>
-        <Text style={styles.author}>- {author}</Text>
+        <Text style={[styles.quote, { color: theme.text }]}>{quote}</Text>
+        <Text style={[styles.author, { color: theme.text }]}>- {author}</Text>
       </ImageBackground>
     </View>
   );

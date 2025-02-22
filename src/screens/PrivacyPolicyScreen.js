@@ -1,11 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const PrivacyPolicyScreen = () => {
+  const { theme } = useTheme();
   return (
-    <ScrollView style={styles.container}>
-      {/* <Text style={styles.title}>Privacy Policy</Text> */}
-      <Text style={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* <Text style={[styles.title, { color: theme.text }]}>Privacy Policy</Text> */}
+      <Text style={[styles.content, { color: theme.text }]}>
+        {/* Your Privacy Policy content here. */}
         {/* Your Privacy Policy content here. */}
         Your privacy is important to us...
         {/* ... LOTS MORE TEXT ... */}

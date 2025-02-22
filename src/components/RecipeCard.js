@@ -1,14 +1,28 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const RecipeCard = ({ recipe }) => { // Receives a 'recipe' object as a prop
+  const { theme } = useTheme();
+
   return (
-    <TouchableOpacity style={styles.container} onPress={() => { /* TODO: Handle navigation to recipe details */ }}>
-      <Image source={recipe.image ? {uri: recipe.image} : require('../assets/images/placeholder-recipe.jpg')} style={styles.image} />
-      <View style={styles.textContainer}>
-        <Text style={styles.title}>{recipe.title}</Text>
-        <Text style={styles.description}>{recipe.description}</Text>
-        <Text style={styles.calories}>{recipe.calories} Calories</Text>
+    <TouchableOpacity 
+      style={[styles.container, { 
+        backgroundColor: theme.cardBackground,
+        borderColor: theme.border,
+      }]} 
+      onPress={() => { /* TODO: Handle navigation to recipe details */ }}
+    >
+      <Image 
+        source={recipe.image ? {uri: recipe.image} : require('../assets/images/placeholder-recipe.jpg')} 
+        style={styles.image} 
+      />
+      <View style={[styles.textContainer, { backgroundColor: theme.cardBackground }]}>
+        <Text style={[styles.title, { color: theme.text }]}>{recipe.title}</Text>
+        <Text style={[styles.description, { color: theme.text }]}>{recipe.description}</Text>
+        <View style={[styles.footer, { backgroundColor: theme.touchableBackground }]}>
+          <Text style={[styles.calories, { color: theme.primary }]}>{recipe.calories} Calories</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -16,10 +30,10 @@ const RecipeCard = ({ recipe }) => { // Receives a 'recipe' object as a prop
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    overflow: 'hidden', // Clip image to rounded corners
+    borderRadius: 12,
+    overflow: 'hidden',
     marginBottom: 15,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -28,26 +42,30 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 150, // Adjust as needed
+    height: 150,
   },
   textContainer: {
-    padding: 10,
+    padding: 15,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'sans-serif-medium',
-    marginBottom: 5,
+    marginBottom: 8,
   },
   description: {
     fontSize: 14,
     fontFamily: 'sans-serif',
-    color: 'gray',
-    marginBottom: 5,
+    marginBottom: 12,
+  },
+  footer: {
+    marginTop: 8,
+    padding: 8,
+    borderRadius: 6,
   },
   calories: {
-    fontSize: 12,
-    fontFamily: 'sans-serif',
-    color: '#007AFF',
+    fontSize: 14,
+    fontFamily: 'sans-serif-medium',
+    textAlign: 'center',
   },
 });
 

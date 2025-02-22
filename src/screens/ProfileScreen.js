@@ -14,6 +14,7 @@ import { supabase } from '../utils/supabase';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Calendar from 'expo-calendar';
+import { useTheme } from '../contexts/ThemeContext';
 
 const ProfileScreen = ({ navigation }) => {
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
@@ -27,6 +28,7 @@ const ProfileScreen = ({ navigation }) => {
   const [currentDietPlan, setCurrentDietPlan] = useState(null); // Initialize as null
   const [userName, setUserName] = useState('');
   const [profilePicture, setProfilePicture] = useState('');
+  const { theme } = useTheme();
 
   // Calculate weight changes *after* we have all the data
   const weightChangeSinceStart =
@@ -268,145 +270,168 @@ const ProfileScreen = ({ navigation }) => {
       }
 
   return (
-    <SafeAreaView style={styles.container}>
-    <ScrollView style={styles.container}>
-      <View style={styles.topSection}>
-        <View style={styles.settingsPlaceholder} />
-        <View style={styles.profileInfo}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.topSection, { backgroundColor: theme.background }]}>
+        <View style={[styles.settingsPlaceholder, { backgroundColor: theme.background }]} />
+        <View style={[styles.profileInfo, { backgroundColor: theme.background }]}>
           <Image
                        source={profilePicture ? { uri: profilePicture } : require('../assets/images/placeholder-profile.png')}
 
             style={styles.profileImage}
           />
-          <Text style={styles.userName}>{userName}</Text>
-          <Text style={styles.userDetail}>Member Since: January 2024</Text>
+          <Text style={[styles.userName, { color: theme.text }]}>{userName}</Text>
+          <Text style={[styles.userDetail, { color: theme.text }]}>Member Since: January 2024</Text>
           {/* Add more user details here as needed */}
         </View>
         <TouchableOpacity
-          style={styles.settingsButton}
+          style={[styles.settingsButton, { backgroundColor: theme.background }]}
           onPress={() => navigation.navigate('Settings')}
         >
           <Ionicons name="settings-outline" size={24} color="black" />
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        style={styles.editProfileButton} 
+      <TouchableOpacity 
+        style={[styles.editProfileButton, { 
+          backgroundColor: theme.buttonBackground,
+          borderColor: theme.border,
+        }]} 
         onPress={() => navigation.navigate('EditProfile')}
       >
-        <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+        <Text style={[styles.editProfileButtonText, { color: theme.buttonText }]}>Edit Profile</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.appointmentButton}
+        style={[styles.appointmentButton, { 
+          backgroundColor: theme.buttonBackground,
+          borderColor: theme.border,
+        }]}
         onPress={() => navigation.navigate('RequestAppointment')} // Navigate to RequestAppointmentScreen
       >
-        <Text style={styles.appointmentButtonText}>Request Appointment</Text>
+        <Text style={[styles.appointmentButtonText, { color: theme.buttonText }]}>Request Appointment</Text>
       </TouchableOpacity>
 
       {/* Weight Progress Section */}
-      <View style={styles.weightProgressSection}>
-        <Text style={styles.sectionTitle}>Weight Progress</Text>
-        <View style={styles.weightItem}>
-          <Text style={styles.weightLabel}>Current Weight:</Text>
-          <Text style={styles.weightValue}>{currentWeight} lbs</Text>
+      <View style={[styles.weightProgressSection, { backgroundColor: theme.cardBackground }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Weight Progress</Text>
+        <View style={[styles.weightItem, { backgroundColor: theme.background }]}>
+          <Text style={[styles.weightLabel, { color: theme.text }]}>Current Weight:</Text>
+          <Text style={[styles.weightValue, { color: theme.text }]}>{currentWeight} lbs</Text>
         </View>
-        <View style={styles.weightItem}>
-          <Text style={styles.weightLabel}>Goal Weight:</Text>
-          <Text style={styles.weightValue}>{goalWeight} lbs</Text>
+        <View style={[styles.weightItem, { backgroundColor: theme.background }]}>
+          <Text style={[styles.weightLabel, { color: theme.text }]}>Goal Weight:</Text>
+          <Text style={[styles.weightValue, { color: theme.text }]}>{goalWeight} lbs</Text>
         </View>
-        <View style={styles.weightItem}>
-          <Text style={styles.weightLabel}>Change Since Start:</Text>
+        <View style={[styles.weightItem, { backgroundColor: theme.background }]}>
+          <Text style={[styles.weightLabel, { color: theme.text }]}>Change Since Start:</Text>
           <Text style={[styles.weightValue, { color: weightChangeSinceStart <= 0 ? 'green' : 'red' }]}>
             {weightChangeSinceStart} lbs
           </Text>
         </View>
-        <View style={styles.weightItem}>
-          <Text style={styles.weightLabel}>Change Since Last Weigh-In:</Text>
+        <View style={[styles.weightItem, { backgroundColor: theme.background }]}>
+          <Text style={[styles.weightLabel, { color: theme.text }]}>Change Since Last Weigh-In:</Text>
           <Text style={[styles.weightValue, { color: weightChangeSinceLast <= 0 ? 'green' : 'red' }]}>
             {weightChangeSinceLast} lbs
           </Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('WeightHistory')}>
-            <Text style={styles.viewHistoryText}>View Weight History Chart</Text>
+        <TouchableOpacity 
+          style={[styles.viewHistoryButton, { backgroundColor: theme.touchableBackground }]}
+          onPress={() => navigation.navigate('WeightHistory')}
+        >
+          <Text style={[styles.viewHistoryText, { color: theme.primary }]}>View Weight History Chart</Text>
         </TouchableOpacity>
       </View>
 
       {/* Diet Plan Section */}
-      <View style={styles.dietPlanSection}>
-        <Text style={styles.sectionTitle}>Current Diet Plan</Text>
+      <View style={[styles.dietPlanSection, { backgroundColor: theme.cardBackground }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Current Diet Plan</Text>
         {currentDietPlan ? (
           <>
-            <View style={styles.dietPlanOverview}>
-              <Text>Calories: {currentDietPlan.calorieTarget} kcal</Text>
-              <Text>Protein: {currentDietPlan.proteinTarget}g</Text>
-              <Text>Carbs: {currentDietPlan.carbsTarget}g</Text>
-              <Text>Fat: {currentDietPlan.fatTarget}g</Text>
+            <View style={[styles.dietPlanOverview, { backgroundColor: theme.background }]}>
+              <Text style={[styles.dietPlanLabel, { color: theme.text }]}>Calories:</Text>
+              <Text style={[styles.dietPlanValue, { color: theme.text }]}>{currentDietPlan.calorieTarget} kcal</Text>
+              <Text style={[styles.dietPlanLabel, { color: theme.text }]}>Protein:</Text>
+              <Text style={[styles.dietPlanValue, { color: theme.text }]}>{currentDietPlan.proteinTarget}g</Text>
+              <Text style={[styles.dietPlanLabel, { color: theme.text }]}>Carbs:</Text>
+              <Text style={[styles.dietPlanValue, { color: theme.text }]}>{currentDietPlan.carbsTarget}g</Text>
+              <Text style={[styles.dietPlanLabel, { color: theme.text }]}>Fat:</Text>
+              <Text style={[styles.dietPlanValue, { color: theme.text }]}>{currentDietPlan.fatTarget}g</Text>
             </View>
             <TouchableOpacity
-              style={styles.viewDetailsButton}
-              onPress={() =>
-                navigation.navigate('DietPlan', { dietPlan: currentDietPlan })
-              }
+              style={[styles.viewDetailsButton, { backgroundColor: theme.buttonBackground }]}
+              onPress={() => navigation.navigate('DietPlan', { dietPlan: currentDietPlan })}
             >
-              <Text style={styles.viewDetailsButtonText}>View Details</Text>
+              <Text style={[styles.viewDetailsButtonText, { color: theme.buttonText }]}>View Details</Text>
             </TouchableOpacity>
           </>
         ) : (
-          <Text>No diet plan assigned.</Text> // Or some other placeholder
+          <Text style={[styles.noAppointmentsText, { color: theme.text }]}>No diet plan assigned.</Text> // Or some other placeholder
         )}
-        <TouchableOpacity onPress={() => navigation.navigate('DietPlanHistory')}>
-          <Text style={styles.viewHistoryText}>View Diet Plan History</Text>
+        <TouchableOpacity 
+          style={[styles.viewHistoryButton, { backgroundColor: theme.touchableBackground }]}
+          onPress={() => navigation.navigate('DietPlanHistory')}
+        >
+          <Text style={[styles.viewHistoryText, { color: theme.primary }]}>View Diet Plan History</Text>
         </TouchableOpacity>
       </View>
 
        {/* Upcoming Appointments */}
-       <View style={styles.appointmentsSection}>
-        <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
+       <View style={[styles.appointmentsSection, { backgroundColor: theme.cardBackground }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Upcoming Appointments</Text>
         {upcomingAppointments.length > 0 ? (
           upcomingAppointments.map((appointment) => (
-            <View key={appointment.id} style={styles.appointmentItem}>
+            <View key={appointment.id} style={[styles.appointmentItem, { backgroundColor: theme.background }]}>
               <View style={styles.appointmentDetails}>
-                <Text style={styles.appointmentDate}>{formatDate(appointment.date)}</Text>
-                <Text style={styles.appointmentTime}>{formatTime(appointment.date)}</Text>
-                <Text style={styles.appointmentLocation}>{appointment.location}</Text>
+                <Text style={[styles.appointmentDate, { color: theme.text }]}>{formatDate(appointment.date)}</Text>
+                <Text style={[styles.appointmentTime, { color: theme.text }]}>{formatTime(appointment.date)}</Text>
+                <Text style={[styles.appointmentLocation, { color: theme.text }]}>{appointment.location}</Text>
               </View>
-              <View style={styles.appointmentActions}>
-                <TouchableOpacity onPress={() => handleReschedule(appointment.id)}>
-                  <Text style={styles.actionButton}>Reschedule</Text>
+              <View style={[styles.appointmentActions, { backgroundColor: theme.cardBackground }]}>
+                <TouchableOpacity 
+                  style={[styles.actionButton, { backgroundColor: theme.touchableBackground }]}
+                  onPress={() => handleReschedule(appointment.id)}
+                >
+                  <Text style={[styles.actionButtonText, { color: theme.primary }]}>Reschedule</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleCancel(appointment.id)}>
-                  <Text style={[styles.actionButton, styles.cancelButton]}>Cancel</Text>
+                <TouchableOpacity 
+                  style={[styles.actionButton, { backgroundColor: theme.touchableBackground }]}
+                  onPress={() => handleCancel(appointment.id)}
+                >
+                  <Text style={[styles.actionButtonText, { color: theme.danger }]}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => addToCalendar(appointment)}>
-                    <Ionicons name='calendar-outline' size={24} color='#007AFF'/>
+                <TouchableOpacity 
+                  style={[styles.actionButton, { backgroundColor: theme.touchableBackground }]}
+                  onPress={() => addToCalendar(appointment)}
+                >
+                  <Ionicons name='calendar-outline' size={24} color={theme.primary}/>
                 </TouchableOpacity>
               </View>
             </View>
           ))
         ) : (
-          <Text style={styles.noAppointmentsText}>No upcoming appointments.</Text>
+          <Text style={[styles.noAppointmentsText, { color: theme.text }]}>No upcoming appointments.</Text>
         )}
       </View>
 
       {/* Past Appointments */}
-      <View style={styles.appointmentsSection}>
-        <Text style={styles.sectionTitle}>Past Appointments</Text>
+      <View style={[styles.appointmentsSection, { backgroundColor: theme.cardBackground }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Past Appointments</Text>
         {pastAppointments.length > 0 ? (
           pastAppointments.map((appointment) => (
-            <View key={appointment.id} style={styles.appointmentItem}>
+            <View key={appointment.id} style={[styles.appointmentItem, { backgroundColor: theme.background }]}>
               <View style={styles.appointmentDetails}>
-                <Text style={styles.appointmentDate}>{formatDate(appointment.date)}</Text>
-                <Text style={styles.appointmentTime}>{formatTime(appointment.date)}</Text>
-                <Text style={styles.appointmentLocation}>{appointment.location}</Text>
+                <Text style={[styles.appointmentDate, { color: theme.text }] }>{formatDate(appointment.date)}</Text>
+                <Text style={[styles.appointmentTime, { color: theme.text }]}>{formatTime(appointment.date)}</Text>
+                <Text style={[styles.appointmentLocation, { color: theme.text }]}>{appointment.location}</Text>
                 {appointment.notes && (
-                  <Text style={styles.appointmentNotes}>{appointment.notes}</Text>
+                  <Text style={[styles.appointmentNotes, { color: theme.text }]}>{appointment.notes}</Text>
                 )}
               </View>
             </View>
           ))
         ) : (
-          <Text style={styles.noAppointmentsText}>No past appointments.</Text>
+          <Text style={[styles.noAppointmentsText, { color: theme.text }]}>No past appointments.</Text>
         )}
       </View>
         <View style={{height: 30}}></View>
@@ -418,187 +443,194 @@ const ProfileScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f0f0f0', // Light gray background
     },
-  container: {
-    flexGrow: 1,
-    // backgroundColor: '#f0f0f0',
-  },
-  topSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    padding: 20,
-    width: '100%',
-  },
-  profileInfo: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
-  },
-  headerText: {
-    fontSize: 20,
-    fontFamily: 'sans-serif-medium',
-  },
-  settingsPlaceholder: {
-    width: 34,
-  },
-  settingsButton: {
-    padding: 5,
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50, // Circular image
-    marginBottom: 10,
-  },
-  userName: {
-    fontSize: 18,
-    fontFamily: 'sans-serif-medium',
-    marginBottom: 5,
-  },
-  userDetail: {
-    fontSize: 14,
-    fontFamily: 'sans-serif',
-    color: 'gray',
-  },
-  editProfileButton: {
-    backgroundColor: '#007AFF',
+    container: {
+        flexGrow: 1,
+    },
+    topSection: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        padding: 20,
+        width: '100%',
+    },
+    profileInfo: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        backgroundColor: 'white',
+    },
+    headerText: {
+        fontSize: 20,
+        fontFamily: 'sans-serif-medium',
+    },
+    settingsPlaceholder: {
+        width: 34,
+    },
+    settingsButton: {
+        padding: 5,
+    },
+    profileImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 50, // Circular image
+        marginBottom: 10,
+    },
+    userName: {
+        fontSize: 18,
+        fontFamily: 'sans-serif-medium',
+        marginBottom: 5,
+    },
+    userDetail: {
+        fontSize: 14,
+        fontFamily: 'sans-serif',
+        color: 'gray',
+    },
+    editProfileButton: {
         paddingVertical: 15,
         paddingHorizontal: 30,
         borderRadius: 10,
         margin: 10,
+        elevation: 2,
     },
     editProfileButtonText: {
-      color: 'white',
         fontSize: 18,
         fontFamily: 'sans-serif-medium',
         textAlign: 'center'
     },
-  appointmentButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    margin: 10,
-  },
-  appointmentButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontFamily: 'sans-serif-medium',
-    textAlign: 'center'
-  },
-  appointmentsSection: {
-    backgroundColor: 'white',
-    margin: 10, // Reduced margin
-    borderRadius: 10,
-    padding: 15,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'sans-serif-medium',
-    marginBottom: 10,
-  },
-  appointmentItem: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingVertical: 10,
-  },
-  appointmentDetails: {
-    marginBottom: 5,
-  },
-  appointmentDate: {
-    fontSize: 16,
-    fontFamily: 'sans-serif-medium',
-  },
-  appointmentTime: {
-    fontSize: 14,
-    fontFamily: 'sans-serif',
-    color: 'gray',
-  },
-  appointmentLocation: {
-    fontSize: 14,
-    fontFamily: 'sans-serif',
-  },
-  appointmentNotes: {
-    fontSize: 14,
-    fontFamily: 'sans-serif',
-    color: 'gray',
-    marginTop: 5,
-  },
-  appointmentActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between', // Distribute buttons evenly
-    alignItems: 'center',           // Vertically center buttons
-    marginTop: 5,
-  },
-  actionButton: {
-    color: '#007AFF',
-    fontSize: 14,
-    fontFamily: 'sans-serif',
-    marginRight: 10 // Add spacing
-  },
-  cancelButton: {
-    color: 'red', // Distinguish cancel button
-  },
+    appointmentButton: {
+        paddingVertical: 15,
+        paddingHorizontal: 30,
+        borderRadius: 10,
+        margin: 10,
+        elevation: 2,
+    },
+    appointmentButtonText: {
+        fontSize: 18,
+        fontFamily: 'sans-serif-medium',
+        textAlign: 'center'
+    },
+    appointmentsSection: {
+        backgroundColor: 'white',
+        margin: 10, // Reduced margin
+        borderRadius: 10,
+        padding: 15,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontFamily: 'sans-serif-medium',
+        marginBottom: 10,
+    },
+    appointmentItem: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        paddingVertical: 10,
+    },
+    appointmentDetails: {
+        marginBottom: 5,
+    },
+    appointmentDate: {
+        fontSize: 16,
+        fontFamily: 'sans-serif-medium',
+    },
+    appointmentTime: {
+        fontSize: 14,
+        fontFamily: 'sans-serif',
+        color: 'gray',
+    },
+    appointmentLocation: {
+        fontSize: 14,
+        fontFamily: 'sans-serif',
+    },
+    appointmentNotes: {
+        fontSize: 14,
+        fontFamily: 'sans-serif',
+        color: 'gray',
+        marginTop: 5,
+    },
+    appointmentActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between', // Distribute buttons evenly
+        alignItems: 'center',           // Vertically center buttons
+        marginTop: 5,
+    },
+    actionButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+        borderRadius: 6,
+        marginHorizontal: 5,
+    },
+    actionButtonText: {
+        fontSize: 14,
+        fontFamily: 'sans-serif-medium',
+        textAlign: 'center'
+    },
+    cancelButton: {
+        color: 'red', // Distinguish cancel button
+    },
     noAppointmentsText: {
-      fontFamily: 'sans-serif',
+        fontFamily: 'sans-serif',
         color: 'gray',
         textAlign: 'center',
         padding: 10
     },
     weightProgressSection: {
-      backgroundColor: 'white',
-      margin: 10,
-      borderRadius: 10,
-      padding: 15
-  },
-  weightItem: {
-    flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 5
-  },
-  weightLabel: {
-    fontSize: 16,
-      fontFamily: 'sans-serif'
-  },
-  weightValue: {
-    fontSize: 16,
-      fontFamily: 'sans-serif-medium'
-  },
-  viewHistoryText: {
-      color: '#007AFF',
-      textAlign: 'center',
-      marginTop: 10,
-      fontSize: 16
-  },
-  dietPlanSection: {
-    backgroundColor: 'white',
-    margin: 10,
-    borderRadius: 10,
-    padding: 15,
-  },
-  dietPlanOverview: {
-    marginBottom: 10,
-  },
-  viewDetailsButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  viewDetailsButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontFamily: 'sans-serif-medium',
-  },
+        backgroundColor: 'white',
+        margin: 10,
+        borderRadius: 10,
+        padding: 15
+    },
+    weightItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 5
+    },
+    weightLabel: {
+        fontSize: 16,
+        fontFamily: 'sans-serif'
+    },
+    weightValue: {
+        fontSize: 16,
+        fontFamily: 'sans-serif-medium'
+    },
+    viewHistoryText: {
+        fontSize: 16,
+        fontFamily: 'sans-serif-medium',
+        textAlign: 'center'
+    },
+    dietPlanSection: {
+        backgroundColor: 'white',
+        margin: 10,
+        borderRadius: 10,
+        padding: 15,
+    },
+    dietPlanOverview: {
+        marginBottom: 10,
+    },
+    viewDetailsButton: {
+        paddingVertical: 12,
+        paddingHorizontal: 25,
+        borderRadius: 8,
+        marginTop: 10,
+        elevation: 2,
+    },
+    viewDetailsButtonText: {
+        fontSize: 16,
+        fontFamily: 'sans-serif-medium',
+        textAlign: 'center'
+    },
+    viewHistoryButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+        marginTop: 10,
+        alignItems: 'center',
+    },
 });
 
 export default ProfileScreen;

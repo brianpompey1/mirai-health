@@ -1,11 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const TermsScreen = () => {
+  const { theme } = useTheme();
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* <Text style={styles.title}>Terms of Service</Text> */}
-      <Text style={styles.content}>
+      <Text style={[styles.content, { color: theme.text }]}>
         {/* Your Terms of Service content here.  This should be a long string or
             loaded from a separate file. */}
         Lorem ipsum dolor sit amet, consectetur adipiscing elit...

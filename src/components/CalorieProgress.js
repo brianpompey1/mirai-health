@@ -1,16 +1,18 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const CalorieProgress = ({ consumed, total }) => {
   const progress = total > 0 ? (consumed / total) * 100 : 0; // Prevent division by zero
   const remaining = total - consumed;
+  const { theme } = useTheme();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.progressBarContainer}>
         <View style={[styles.progressBar, { width: `${progress}%`, backgroundColor: progress > 100 ? 'red' : '#007AFF' }]} />
       </View>
-      <Text style={styles.progressText}>
+      <Text style={[styles.progressText, { color: theme.text }]}>
          {consumed} / {total} cal
       </Text>
     </View>

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { supabase } from '../utils/supabase';
+import { useTheme } from '../contexts/ThemeContext';
 
 const AddExerciseScreen = ({ navigation, route }) => {
   const [exerciseSummary, setExerciseSummary] = useState(''); // Single text field for the summary
   const [loading, setLoading] = useState(false);
+  const { theme } = useTheme();
 
   const { closeModal } = route.params || {};
 
@@ -63,7 +65,7 @@ const AddExerciseScreen = ({ navigation, route }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Text style={styles.title}>Add Exercise</Text>
 
       <Text style={styles.label}>Exercise Summary:</Text>

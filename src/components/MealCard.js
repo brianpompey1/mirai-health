@@ -1,25 +1,27 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const MealCard = ({ meal }) => {
   const totalCalories = meal.items.reduce((sum, item) => sum + item.calories, 0);
+  const { theme } = useTheme();
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.mealTitle}>{meal.name}</Text>
+    <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
+      <Text style={[styles.mealTitle, { color: theme.text }]}>{meal.name}</Text>
       {meal.items.map((item, index) => (
-        <View key={index} style={styles.foodItem}>
-          <View style={styles.foodNameContainer}>
-            <Text style={styles.foodName}>{item.name}</Text>
-            <Text style={styles.macros}>
+        <View key={index} style={[styles.foodItem, { backgroundColor: theme.cardBackground }]}>
+          <View style={[styles.foodNameContainer, { backgroundColor: theme.cardBackground }]}>
+            <Text style={[styles.foodName, { color: theme.text }]}>{item.name}</Text>
+            <Text style={[styles.macros, { color: theme.text }]}>
               P: {item.protein}g • C: {item.carbs}g • F: {item.fat}g
             </Text>
           </View>
-          <Text style={styles.calories}>{item.calories} cal</Text>
+          <Text style={[styles.calories, { color: theme.text }]}>{item.calories} cal</Text>
         </View>
       ))}
-      <View style={styles.totalContainer}>
-        <Text style={styles.totalText}>Total Calories: {totalCalories}</Text>
+      <View style={[styles.totalContainer, { backgroundColor: theme.cardBackground }]}>
+        <Text style={[styles.totalText, { color: theme.text }]}>Total Calories: {totalCalories}</Text>
       </View>
     </View>
   );

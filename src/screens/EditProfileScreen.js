@@ -13,6 +13,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { supabase } from '../utils/supabase';
+import { useTheme } from '../contexts/ThemeContext';
 
 const EditProfileScreen = ({ navigation }) => {
   // Placeholder data - replace with actual user data from context/state
@@ -26,6 +27,7 @@ const EditProfileScreen = ({ navigation }) => {
   const [profilePicture, setProfilePicture] = useState(''); // Store the URI
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null)
+  const { theme } = useTheme();
 
   useEffect(() => {
 
@@ -176,29 +178,29 @@ const EditProfileScreen = ({ navigation }) => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.profileImageContainer}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.profileImageContainer, { backgroundColor: theme.background }]}>
         <TouchableOpacity onPress={pickImage}>
           <Image
             source={profilePicture ? { uri: profilePicture } : require('../assets/images/placeholder-profile.png')}
             style={styles.profileImage}
           />
-          <Text style={styles.changePhotoText}>Change Photo</Text>
+          <Text style={[styles.changePhotoText, { color: theme.text }]}>Change Photo</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.form}>
-        <Text style={styles.label}>Name:</Text>
+      <View style={[styles.form, { backgroundColor: theme.background }]}>
+        <Text style={[styles.label, { color: theme.text }]}>Name:</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
           value={name}
           onChangeText={setName}
           placeholder="Enter your name"
         />
 
-        <Text style={styles.label}>Email:</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Email:</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
           value={email}
           onChangeText={setEmail}
           placeholder="Enter your email"
@@ -206,55 +208,56 @@ const EditProfileScreen = ({ navigation }) => {
           autoCapitalize="none"
         />
 
-        <Text style={styles.label}>Phone:</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Phone:</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
           value={phone}
           onChangeText={setPhone}
           placeholder="Enter your phone number"
           keyboardType="phone-pad"
+          autoCapitalize="none"
         />
 
-        <Text style={styles.label}>Starting Weight (lbs):</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Starting Weight (lbs):</Text>
         <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
             value={startWeight}
             onChangeText={setStartWeight}
             placeholder="Enter your starting weight"
             keyboardType="numeric"
         />
 
-        <Text style={styles.sectionTitle}>Change Password</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Change Password</Text>
 
-        <Text style={styles.label}>Current Password:</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Current Password:</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
           value={currentPassword}
           onChangeText={setCurrentPassword}
           placeholder="Enter current password"
           secureTextEntry
         />
 
-        <Text style={styles.label}>New Password:</Text>
+        <Text style={[styles.label, { color: theme.text }]}>New Password:</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
           value={newPassword}
           onChangeText={setNewPassword}
           placeholder="Enter new password"
           secureTextEntry
         />
 
-        <Text style={styles.label}>Confirm New Password:</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Confirm New Password:</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
           value={confirmNewPassword}
           onChangeText={setConfirmNewPassword}
           placeholder="Confirm new password"
           secureTextEntry
         />
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSaveChanges}>
-          <Text style={styles.saveButtonText}>Save Changes</Text>
+        <TouchableOpacity style={[styles.saveButton, { backgroundColor: theme.buttonBackground }]} onPress={handleSaveChanges}>
+          <Text style={[styles.saveButtonText, { color: theme.buttonText }]}>Save Changes</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

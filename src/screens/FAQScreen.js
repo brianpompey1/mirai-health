@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const FAQScreen = () => {
+  const { theme } = useTheme();
   // Placeholder FAQ data - replace with your actual FAQs
   const faqData = [
     { question: 'How do I track my meals?', answer: 'Go to the Log tab and tap the "+" button to add a meal.' },
@@ -11,12 +13,12 @@ const FAQScreen = () => {
   ];
 
   return (
-    <ScrollView style={styles.container}>
-      {/* <Text style={styles.title}>Frequently Asked Questions</Text> */}
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* <Text style={[styles.title, { color: theme.text }]}>Frequently Asked Questions</Text> */}
       {faqData.map((item, index) => (
-        <View key={index} style={styles.faqItem}>
-          <Text style={styles.question}>{item.question}</Text>
-          <Text style={styles.answer}>{item.answer}</Text>
+        <View key={index} style={[styles.faqItem, { backgroundColor: theme.background }]}>
+          <Text style={[styles.question, { color: theme.text }]}>{item.question}</Text>
+          <Text style={[styles.answer, { color: theme.text }]}>{item.answer}</Text>
         </View>
       ))}
         <View style={{height: 30}}></View>

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import { supabase } from '../utils/supabase';
+import { useTheme } from '../contexts/ThemeContext';
 
 const WeightHistoryScreen = ({ navigation }) => {
   const [weightData, setWeightData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { theme } = useTheme();
 
   useEffect(() => {
     const fetchWeightHistory = async () => {
@@ -62,14 +64,14 @@ const WeightHistoryScreen = ({ navigation }) => {
       };
       if (loading) {
         return (
-          <View style={styles.loadingContainer}>
+          <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
             <ActivityIndicator size="large" color="#007AFF" />
           </View>
         );
       }
       if (!weightData || weightData.length === 0) {
         return (
-            <View  style={styles.container}>
+            <View  style={[styles.container, { backgroundColor: theme.background }]}>
                 <Text>No weight history data available.</Text>
             </View>
 
@@ -77,8 +79,8 @@ const WeightHistoryScreen = ({ navigation }) => {
       }
 
       return (
-        <ScrollView style={styles.container}>
-          <Text style={styles.title}>Weight History</Text>
+        <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+          <Text style={[styles.title, { color: theme.text }]}>Weight History</Text>
           <LineChart
             data={chartData}
             width={Dimensions.get('window').width - 32} // Adjust width for padding

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert 
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../utils/supabase';
+import { useTheme } from '../contexts/ThemeContext';
 
 const RescheduleAppointmentScreen = ({ navigation, route }) => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -12,6 +13,7 @@ const RescheduleAppointmentScreen = ({ navigation, route }) => {
   const [isTimePickerVisible, setTimePickerVisibility] = useState(false);
   const [loading, setLoading] = useState(false);
   const [appointment, setAppointment] = useState(null); // Store the appointment details
+  const { theme } = useTheme();
 
   const { appointmentId } = route.params; // Get appointmentId from route params
 
@@ -141,159 +143,137 @@ const RescheduleAppointmentScreen = ({ navigation, route }) => {
 
     if (loading) {
     return (
-      <View style={styles.container}>
-        <Text>Loading appointment details...</Text>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <Text style={[styles.title, { color: theme.text }]}>Loading appointment details...</Text>
       </View>
     );
   }
 
   if (!appointment) {
     return (
-      <View style={styles.container}>
-        <Text>Appointment not found.</Text>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <Text style={[styles.title, { color: theme.text }]}>Appointment not found.</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Reschedule Appointment</Text>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.section, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+        <Text style={[styles.label, { color: theme.text }]}>Reschedule Appointment</Text>
+        
+        <TouchableOpacity 
+          style={[styles.pickerButton, { backgroundColor: theme.touchableBackground }]} 
+          onPress={showDatePicker}
+        >
+          <Text style={[styles.pickerButtonText, { color: theme.text }]}>{formatDate(selectedDate)}</Text>
+          <Ionicons name="calendar" size={24} color={theme.primary} />
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.dateTimeButton} onPress={showDatePicker}>
-        <Text style={styles.dateTimeButtonText}>{formatDate(selectedDate)}</Text>
-        <Ionicons name="calendar-outline" size={24} color="#007AFF" />
-      </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.pickerButton, { backgroundColor: theme.touchableBackground }]} 
+          onPress={showTimePicker}
+        >
+          <Text style={[styles.pickerButtonText, { color: theme.text }]}>{formatTime(selectedTime)}</Text>
+          <Ionicons name="time" size={24} color={theme.primary} />
+        </TouchableOpacity>
+
+        <Text style={[styles.label, { color: theme.text }]}>Notes</Text>
+        <TextInput
+          style={[styles.input, { 
+            backgroundColor: theme.touchableBackground,
+            color: theme.text,
+            borderColor: theme.border 
+          }]}
+          placeholder="Add any notes about rescheduling..."
+          placeholderTextColor={theme.textSecondary}
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+        />
+
+        <TouchableOpacity 
+          style={[styles.submitButton, { backgroundColor: theme.buttonBackground }]}
+          onPress={handleRescheduleSubmit}
+          disabled={loading}
+        >
+          <Text style={[styles.submitButtonText, { color: theme.primary }]}>
+            {loading ? 'Rescheduling...' : 'Confirm Reschedule'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <DateTimePickerModal
         isVisible={isDatePickerVisible}
         mode="date"
         onConfirm={handleDateConfirm}
         onCancel={hideDatePicker}
         minimumDate={new Date()}
-        isDarkModeEnabled={false}
+        isDarkModeEnabled={theme.dark}
         display="inline"
-        themeVariant="light"
-        accentColor="#007AFF"
+        themeVariant={theme.dark ? "dark" : "light"}
       />
 
-      <TouchableOpacity style={styles.dateTimeButton} onPress={showTimePicker}>
-        <Text style={styles.dateTimeButtonText}>{formatTime(selectedTime)}</Text>
-        <Ionicons name="time-outline" size={24} color="#007AFF" />
-      </TouchableOpacity>
       <DateTimePickerModal
         isVisible={isTimePickerVisible}
         mode="time"
         onConfirm={handleTimeConfirm}
         onCancel={hideTimePicker}
         is24Hour={false}
-        isDarkModeEnabled={false}
+        isDarkModeEnabled={theme.dark}
         display="spinner"
-        themeVariant="light"
-        accentColor="#007AFF"
+        themeVariant={theme.dark ? "dark" : "light"}
       />
-
-      <Text style={styles.label}>Notes (Optional):</Text>
-      <TextInput
-        style={styles.notesInput}
-        value={notes}
-        onChangeText={setNotes}
-        placeholder="Add any notes about the reschedule..."
-        multiline
-        numberOfLines={4}
-        textAlignVertical="top"
-      />
-
-      <TouchableOpacity
-        style={styles.submitButton}
-        onPress={handleRescheduleSubmit}
-        disabled={loading}
-      >
-        <Text style={styles.submitButtonText}>
-          {loading ? 'Rescheduling...' : 'Reschedule'}
-        </Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 };
+
 const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#f0f0f0',
-      padding: 20,
-    },
-    title: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      marginBottom: 30,
-      color: '#333',
-      textAlign: 'center',
-    },
-    dateTimeButton: {
-      backgroundColor: 'white',
-      borderRadius: 12,
-      padding: 18,
-      marginVertical: 10,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    dateTimeButtonText: {
-      fontSize: 16,
-      color: '#333',
-      fontWeight: '500',
-    },
-    label: {
-      fontSize: 16,
-      fontWeight: '600',
-      marginTop: 20,
-      marginBottom: 10,
-      color: '#333',
-    },
-    notesInput: {
-      backgroundColor: 'white',
-      borderRadius: 12,
-      padding: 15,
-      marginBottom: 20,
-      minHeight: 100,
-      textAlignVertical: 'top',
-      fontSize: 16,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 1,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
-      elevation: 2,
-    },
-    submitButton: {
-      backgroundColor: '#007AFF',
-      borderRadius: 12,
-      padding: 18,
-      alignItems: 'center',
-      marginTop: 20,
-      marginBottom: 30,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    submitButtonText: {
-      color: 'white',
-      fontSize: 18,
-      fontWeight: '600',
-    },
-  });
+  container: {
+    flex: 1,
+    padding: 20,
+  },
+  section: {
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+  },
+  label: {
+    fontSize: 16,
+    fontFamily: 'sans-serif-medium',
+    marginBottom: 10,
+  },
+  pickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  pickerButtonText: {
+    fontSize: 16,
+    fontFamily: 'sans-serif',
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 20,
+    height: 100,
+    textAlignVertical: 'top',
+    fontFamily: 'sans-serif',
+  },
+  submitButton: {
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontFamily: 'sans-serif-medium',
+  },
+});
 
 export default RescheduleAppointmentScreen;

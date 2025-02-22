@@ -12,6 +12,7 @@ import {
 import { supabase } from '../utils/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import debounce from 'lodash.debounce'; // Install lodash.debounce:  npx expo install lodash.debounce
+import { useTheme } from '../contexts/ThemeContext';
 
 const API_KEY = 'NvuWQkWdvBXXyCf4C51INMrpBJc3OpLqYk5QUI50'; // Replace with your actual API key
 const API_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search?api_key=';
@@ -24,6 +25,7 @@ const AddFoodScreen = ({ navigation, route }) => {
   const [selectedFood, setSelectedFood] = useState(null);
   const [quantity, setQuantity] = useState('');
   const [foodItems, setFoodItems] = useState([]);
+  const { theme } = useTheme();
 
   const { closeModal } = route.params || {};
 
@@ -115,11 +117,10 @@ const AddFoodScreen = ({ navigation, route }) => {
                 .insert([{
                     user_id: user.id,
                     date: new Date().toISOString().split('T')[0],
-                    time: new Date().toTimeString().split(' ')[0], // Corrected line
+                    time: new Date().toTimeString().split(' ')[0],
                     type: mealType
                 }])
                 .select();
-
 
             if (mealError) throw mealError;
             const mealId = mealData[0].id;
@@ -141,62 +142,60 @@ const AddFoodScreen = ({ navigation, route }) => {
 
             if (foodItemError) throw foodItemError;
 
-          // 3. Update Daily Summary (calories, macros)
-          // First, get existing summary (if any)
-          const { data: summaryData, error: summaryError } = await supabase
-            .from('daily_summaries')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('date', new Date().toISOString().split('T')[0])
-            .single(); // Important: Use single() here, as it is possible to be null
+            // 3. Update Daily Summary
+            const { data: summaryData, error: summaryError } = await supabase
+              .from('daily_summaries')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('date', date)
+              .single();
 
-          if (summaryError && summaryError.code !== 'PGRST116') { // Ignore the no-data error
-            throw summaryError;
-          }
+            // Calculate total nutrients for new food items
+            const totalCalories = foodItems.reduce((sum, item) => sum + item.calories, 0);
+            const totalProtein = foodItems.reduce((sum, item) => sum + item.protein, 0);
+            const totalCarbs = foodItems.reduce((sum, item) => sum + item.carbs, 0);
+            const totalFat = foodItems.reduce((sum, item) => sum + item.fat, 0);
 
-            let currentCalories = 0;
-            let currentProtein = 0;
-            let currentCarbs = 0;
-            let currentFat = 0;
+            if (summaryData) {
+                // Update existing summary
+                const { error: updateError } = await supabase
+                    .from('daily_summaries')
+                    .update({
+                        total_calories: summaryData.total_calories + totalCalories,
+                        total_protein: summaryData.total_protein + totalProtein,
+                        total_carbs: summaryData.total_carbs + totalCarbs,
+                        total_fat: summaryData.total_fat + totalFat
+                    })
+                    .eq('id', summaryData.id);
 
-            if(summaryData) {
-                currentCalories = summaryData.total_calories;
-                currentProtein = summaryData.total_protein;
-                currentCarbs = summaryData.total_carbs;
-                currentFat = summaryData.total_fat;
+                if (updateError) throw updateError;
+            } else {
+                // Create new summary
+                const { error: insertError } = await supabase
+                    .from('daily_summaries')
+                    .insert([{
+                        user_id: user.id,
+                        date: date,
+                        total_calories: totalCalories,
+                        total_protein: totalProtein,
+                        total_carbs: totalCarbs,
+                        total_fat: totalFat,
+                        water_intake: 0
+                    }]);
+
+                if (insertError) throw insertError;
             }
 
-          const newTotalCalories = currentCalories + foodItems.reduce((sum, item) => sum + item.calories, 0);
-          const newTotalProtein = currentProtein + foodItems.reduce((sum, item) => sum + item.protein, 0);
-          const newTotalCarbs = currentCarbs + foodItems.reduce((sum, item) => sum + item.carbs, 0);
-          const newTotalFat = currentFat + foodItems.reduce((sum, item) => sum + item.fat, 0);
-
-          const { error: updateError } = await supabase
-            .from('daily_summaries')
-            .upsert(
-              {
-                user_id: user.id,
-                date: new Date().toISOString().split('T')[0],
-                total_calories: newTotalCalories,
-                total_protein: newTotalProtein,
-                total_carbs: newTotalCarbs,
-                total_fat: newTotalFat,
-                // water_intake:  <-- Don't update water here
-              },
-              { onConflict: 'user_id, date' }
-            ).select();
-            if (updateError) throw updateError;
-
-            Alert.alert('Success', 'Meal saved successfully!');
-            navigation.goBack(); // Navigate back after saving
-
+            Alert.alert('Success', 'Meal added successfully!');
+            // Navigate back and refresh the log screen
+            navigation.navigate('Log', { refresh: true });
         } catch (error) {
             console.error('Error saving meal:', error);
-            Alert.alert('Error', 'Failed to save meal.');
+            Alert.alert('Error', 'Failed to save meal. Please try again.');
         } finally {
             setLoading(false);
         }
-  }
+    };
 
   // Data filtering
     const filterFoodData = (data) => {
@@ -269,70 +268,70 @@ const AddFoodScreen = ({ navigation, route }) => {
   }, [searchTerm, debouncedSearch]); // Call whenever searchTerm changes
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerSection}>
-        <Text style={styles.title}>Add Food</Text>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.headerSection, { backgroundColor: theme.background }]}>
+        <Text style={[styles.title, { color: theme.text }]}>Add Food</Text>
 
-        <View style={styles.buttonContainer}>
+        <View style={[styles.buttonContainer, { backgroundColor: theme.background }]}>
           {['breakfast', 'lunch', 'dinner', 'snack'].map((type) => (
             <TouchableOpacity
               key={type}
-              style={[styles.mealTypeButton, mealType === type && styles.selectedMealType]}
+              style={[styles.mealTypeButton, mealType === type && styles.selectedMealType, { backgroundColor: theme.background }]}
               onPress={() => setMealType(type)}
             >
-              <Text style={[styles.buttonText, mealType === type && styles.selectedMealText]}>
+              <Text style={[styles.buttonText, mealType === type && styles.selectedMealText, { color: theme.text }]}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <View style={styles.searchSection}>
+        <View style={[styles.searchSection, { backgroundColor: theme.background }]}>
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { backgroundColor: theme.background }]}
             placeholder="Search for a food..."
             value={searchTerm}
             onChangeText={setSearchTerm}
           />
           <TouchableOpacity
-            style={styles.searchButton}
+            style={[styles.searchButton, { backgroundColor: theme.background }]}
             onPress={() => debouncedSearch(searchTerm)}
             disabled={loading}
           >
-            <Ionicons name="search" size={24} color="black" />
+            <Ionicons name="search" size={24} color={theme.text} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.contentContainer}>
+      <View style={[styles.contentContainer, { backgroundColor: theme.background }]}>
         {loading ? (
-          <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+          <ActivityIndicator size="large" color="#007AFF" style={[styles.loader, { backgroundColor: theme.background }]} />
         ) : (
           <>
             {selectedFood && (
-              <View style={styles.selectedFoodContainer}>
-                <Text style={styles.selectedFoodName}>{selectedFood.name}</Text>
+              <View style={[styles.selectedFoodContainer, { backgroundColor: theme.background }]}>
+                <Text style={[styles.selectedFoodName, { color: theme.text }]}>{selectedFood.name}</Text>
                 <View style={styles.macroRow}>
-                  <Text style={styles.selectedFoodInfo}>Calories: {selectedFood.calories}</Text>
-                  <Text style={styles.selectedFoodInfo}>Protein: {selectedFood.protein}g</Text>
+                  <Text style={[styles.selectedFoodInfo, { color: theme.text }]}>Calories: {selectedFood.calories}</Text>
+                  <Text style={[styles.selectedFoodInfo, { color: theme.text }]}>Protein: {selectedFood.protein}g</Text>
                 </View>
                 <View style={styles.macroRow}>
-                  <Text style={styles.selectedFoodInfo}>Carbs: {selectedFood.carbs}g</Text>
-                  <Text style={styles.selectedFoodInfo}>Fat: {selectedFood.fat}g</Text>
+                  <Text style={[styles.selectedFoodInfo, { color: theme.text }]}>Carbs: {selectedFood.carbs}g</Text>
+                  <Text style={[styles.selectedFoodInfo, { color: theme.text }]}>Fat: {selectedFood.fat}g</Text>
                 </View>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: theme.background }]}
                   placeholder="Quantity (e.g., 1 cup, 100g, 2)"
                   value={quantity}
                   onChangeText={setQuantity}
                   keyboardType="numeric"
                 />
                 <TouchableOpacity
-                  style={styles.addButton}
+                  style={[styles.addButton, { backgroundColor: theme.background }]}
                   onPress={handleAddFood}
                   disabled={loading}
                 >
-                  <Text style={styles.addButtonText}>Add to Meal</Text>
+                  <Text style={[styles.addButtonText, { color: theme.text }]}>Add to Meal</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -342,42 +341,42 @@ const AddFoodScreen = ({ navigation, route }) => {
                 data={searchResults}
                 renderItem={({ item }) => (
                   <TouchableOpacity 
-                    style={styles.searchResultItem} 
+                    style={[styles.searchResultItem, { backgroundColor: theme.background }]} 
                     onPress={() => handleSelectFood(item)}
                   >
-                    <Text style={styles.foodName}>{item.description}</Text>
-                    <Text style={styles.foodInfo}>
+                    <Text style={[styles.foodName, { color: theme.text }]}>{item.description}</Text>
+                    <Text style={[styles.foodInfo, { color: theme.text }]}>
                       {item.foodCategory || ''}
                     </Text>
                   </TouchableOpacity>
                 )}
                 keyExtractor={item => item.fdcId.toString()}
                 ListEmptyComponent={
-                  <Text style={styles.emptyText}>No foods found.</Text>
+                  <Text style={[styles.emptyText, { color: theme.text }]}>No foods found.</Text>
                 }
               />
             ) : (
               <>
-                <Text style={styles.sectionTitle}>Added Foods</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Added Foods</Text>
                 <FlatList
                   data={foodItems}
                   renderItem={({ item }) => (
-                    <View style={styles.foodItem}>
-                      <Text style={styles.foodItemText}>{item.name} - {item.calories} cal</Text>
+                    <View style={[styles.foodItem, { backgroundColor: theme.background }]}>
+                      <Text style={[styles.foodItemText, { color: theme.text }]}>{item.name} - {item.calories} cal</Text>
                     </View>
                   )}
                   keyExtractor={(item, index) => index.toString()}
                   ListEmptyComponent={
-                    <Text style={styles.emptyText}>No food items added yet.</Text>
+                    <Text style={[styles.emptyText, { color: theme.text }]}>No food items added yet.</Text>
                   }
                 />
                 {foodItems.length > 0 && (
                   <TouchableOpacity
-                    style={styles.saveButton}
+                    style={[styles.saveButton, { backgroundColor: theme.background }]}
                     onPress={handleSaveMeal}
                     disabled={loading}
                   >
-                    <Text style={styles.saveButtonText}>
+                    <Text style={[styles.saveButtonText, { color: theme.text }]}>
                       {loading ? 'Saving...' : 'Save Meal'}
                     </Text>
                   </TouchableOpacity>

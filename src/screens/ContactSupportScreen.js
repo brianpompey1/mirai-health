@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 const ContactSupportScreen = () => {
+  const { theme } = useTheme();
 
   const openEmail = () => {
     Linking.openURL('mailto:support@miraiweightloss.com?subject=App Support'); // Replace with your support email
@@ -17,17 +19,17 @@ const ContactSupportScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* <Text style={styles.title}>Contact Support</Text> */}
 
-      <TouchableOpacity style={styles.contactOption} onPress={openEmail}>
+      <TouchableOpacity style={[styles.contactOption, { backgroundColor: theme.background }]} onPress={openEmail}>
           <Ionicons name='mail-outline' size={24} color='#007AFF'/>
-        <Text style={styles.contactText}>Email Support</Text>
+        <Text style={[styles.contactText, { color: theme.text }]}>Email Support</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.contactOption} onPress={makePhoneCall}>
+      <TouchableOpacity style={[styles.contactOption, { backgroundColor: theme.background }]} onPress={makePhoneCall}>
         <Ionicons name='call-outline' size={24} color='#007AFF'/>
-        <Text style={styles.contactText}>Call Support</Text>
+        <Text style={[styles.contactText, { color: theme.text }]}>Call Support</Text>
       </TouchableOpacity>
 
       {/* Add in-app messaging option here when you implement it */}

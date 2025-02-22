@@ -1,53 +1,55 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const DietPlanScreen = ({ route }) => {
   // Get the diet plan data from the navigation params.  This is how we'll pass
   // the data from ProfileScreen to DietPlanScreen.
   const { dietPlan } = route.params || { dietPlan: null };
+  const { theme } = useTheme();
 
   if (!dietPlan) {
     return (
-      <View style={styles.container}>
-        <Text>No diet plan data available.</Text>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <Text style={[styles.title, { color: theme.text }]}>No diet plan data available.</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* <Text style={styles.title}>Current Diet Plan</Text> */}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Name:</Text>
-        <Text style={styles.detail}>{dietPlan.name}</Text>
+      <View style={[styles.section, { backgroundColor: theme.background }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Name:</Text>
+        <Text style={[styles.detail, { color: theme.text }]}>{dietPlan.name}</Text>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Calorie Target:</Text>
-        <Text style={styles.detail}>{dietPlan.calorieTarget} kcal</Text>
+      <View style={[styles.section, { backgroundColor: theme.background }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Calorie Target:</Text>
+        <Text style={[styles.detail, { color: theme.text }]}>{dietPlan.calorieTarget} kcal</Text>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Macronutrient Breakdown:</Text>
-        <Text style={styles.detail}>Protein: {dietPlan.proteinTarget}g</Text>
-        <Text style={styles.detail}>Carbs: {dietPlan.carbsTarget}g</Text>
-        <Text style={styles.detail}>Fat: {dietPlan.fatTarget}g</Text>
+      <View style={[styles.section, { backgroundColor: theme.background }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Macronutrient Breakdown:</Text>
+        <Text style={[styles.detail, { color: theme.text }]}>Protein: {dietPlan.proteinTarget}g</Text>
+        <Text style={[styles.detail, { color: theme.text }]}>Carbs: {dietPlan.carbsTarget}g</Text>
+        <Text style={[styles.detail, { color: theme.text }]}>Fat: {dietPlan.fatTarget}g</Text>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Allowed Foods:</Text>
+      <View style={[styles.section, { backgroundColor: theme.background }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Allowed Foods:</Text>
           {/*Render as a list*/}
         {dietPlan.allowedFoods.map((food, index) => (
-            <Text style={styles.detail} key={index}>{food}</Text>
+            <Text style={[styles.detail, { color: theme.text }]} key={index}>{food}</Text>
         ))}
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Restricted Foods:</Text>
+      <View style={[styles.section, { backgroundColor: theme.background }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Restricted Foods:</Text>
         {/*Render as a list*/}
         {dietPlan.restrictedFoods.map((food, index) => (
-            <Text style={styles.detail} key={index}>{food}</Text>
+            <Text style={[styles.detail, { color: theme.text }]} key={index}>{food}</Text>
         ))}
       </View>
 
