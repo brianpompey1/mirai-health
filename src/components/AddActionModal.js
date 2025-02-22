@@ -2,17 +2,20 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Modal from 'react-native-modal';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
-const AddActionModal = ({ isVisible, onClose, onAddExercise, onAddFood }) => {
+const AddActionModal = ({ isVisible, onClose, onAddFood }) => {
+  const { theme } = useTheme();
+
   return (
     <Modal
       isVisible={isVisible}
-      onBackdropPress={onClose} // Close when tapping outside
-      onBackButtonPress={onClose} // Close when pressing back button (Android)
-      swipeDirection="down" // Allow swiping down to close
+      onBackdropPress={onClose}
+      onBackButtonPress={onClose}
+      swipeDirection="down"
       onSwipeComplete={onClose}
-      animationIn="slideInUp" // Slide in from bottom
-      animationOut="slideOutDown" // Slide out to bottom
+      animationIn="slideInUp"
+      animationOut="slideOutDown"
       animationInTiming={300}
       animationOutTiming={300}
       backdropOpacity={0.5}
@@ -20,19 +23,22 @@ const AddActionModal = ({ isVisible, onClose, onAddExercise, onAddFood }) => {
     >
       <View style={styles.content}>
         <View style={styles.dragHandle} />
+        
+        <View style={styles.header}>
+          <Text style={[styles.title, {color: theme.text}]}>Add Food</Text>
+          <Text style={[styles.subtitle, {color: theme.text}]}>Log your meals to track your nutrition</Text>
+        </View>
 
-        <TouchableOpacity style={styles.option} onPress={onAddExercise}>
-          <Ionicons name="barbell-outline" size={24} color="#007AFF" />
-          <Text style={styles.optionText}>Add Exercise</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.option} onPress={onAddFood}>
-          <Ionicons name="fast-food-outline" size={24} color="#007AFF" />
-          <Text style={styles.optionText}>Add Food</Text>
+        <TouchableOpacity style={styles.addFoodButton} onPress={onAddFood}>
+          <View style={styles.buttonContent}>
+            <Ionicons name="fast-food-outline" size={24} color="white" />
+            <Text style={[styles.buttonText, {color: theme.text}]}>Add Food Item</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color="white" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
+          <Text style={[styles.cancelButtonText, {color: theme.text}]}>Cancel</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -40,44 +46,74 @@ const AddActionModal = ({ isVisible, onClose, onAddExercise, onAddFood }) => {
 };
 
 const styles = StyleSheet.create({
-    modal: {
-        justifyContent: 'flex-end',
-        margin: 0,
+  modal: {
+    justifyContent: 'flex-end',
+    margin: 0,
+  },
+  content: {
+    backgroundColor: 'white',
+    padding: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    alignItems: 'stretch',
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 24,
+  },
+  header: {
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  addFoodButton: {
+    backgroundColor: '#27ae60',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
     },
-    content: {
-        backgroundColor: 'white',
-        padding: 22,
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-        alignItems: 'center'
-
-    },
-    dragHandle: {
-        width: 50,
-        height: 5,
-        backgroundColor: 'gray',
-        borderRadius: 3,
-        marginBottom: 20,
-    },
-    option: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    optionText: {
-        marginLeft: 10,
-        fontSize: 18,
-        fontFamily: 'sans-serif',
-    },
-    cancelButton: {
-        marginTop: 20,
-        padding: 10,
-    },
-    cancelButtonText: {
-        fontSize: 18,
-        color: 'red',
-        fontFamily: 'sans-serif',
-    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 12,
+  },
+  cancelButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
 });
 
 export default AddActionModal;

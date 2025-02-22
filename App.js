@@ -6,19 +6,19 @@ import { supabase } from './src/utils/supabase';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { View, Text } from 'react-native'; //For loading state
 import AuthNavigator from './src/navigation/AuthNavigator';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ThemeProvider } from './src/contexts/ThemeContext';
 
 export default function App() {
   const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
     
-
   useEffect(() => {
     const checkUser = async() => {
         setLoading(true);
         try {
             const {data: {user}} = await supabase.auth.getUser();
             setUser(user);
-
         } catch(error){
             console.error(error);
         } finally {
@@ -35,17 +35,20 @@ export default function App() {
     }
   }, []);
 
-if(loading) {
+  if(loading) {
     return (
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
             <Text>Loading...</Text>
         </View>
     )
-}
+  }
   return (
-    <NavigationContainer>
-        {user ? <AppNavigator /> : <AuthNavigator />}
-        
-    </NavigationContainer>
+    <ThemeProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer>
+          {user ? <AppNavigator /> : <AuthNavigator />}
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    </ThemeProvider>
   );
 }

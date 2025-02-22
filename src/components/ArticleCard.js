@@ -1,7 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
+
 
 const ArticleCard = ({ article }) => { // Receives an 'article' object as a prop
+  const { theme } = useTheme();
   return (
     <TouchableOpacity style={styles.container} onPress={() => { /* TODO: Handle navigation to article details */ }}>
       <Text style={styles.title}>{article.title}</Text>

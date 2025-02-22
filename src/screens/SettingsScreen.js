@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity, ScrollView } from 'react-native'; // Import ScrollView
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 const SettingsScreen = ({navigation}) => { //Get navigation prop
+  const { theme, isDarkMode, toggleTheme } = useTheme();
   const [darkMode, setDarkMode] = useState(false);
   const [preferredContactMethod, setPreferredContactMethod] = useState('text'); // 'text', 'phone', or 'email'
   const [appointmentReminders, setAppointmentReminders] = useState(true);
@@ -16,54 +18,54 @@ const SettingsScreen = ({navigation}) => { //Get navigation prop
       };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, {backgroundColor: theme.background}]}>
       {/* <Text style={styles.title}>Settings</Text> */}
 
-      <View style={styles.settingItem}>
-        <Text style={styles.settingText}>Dark Mode</Text>
+      <View style={[styles.settingItem, {backgroundColor: theme.cardBackground}]}>
+        <Text style={[styles.settingText, {color: theme.text}]}>Dark Mode</Text>
         <Switch
-          value={darkMode}
-          onValueChange={(value) => setDarkMode(value)}
+          value={isDarkMode}
+          onValueChange={toggleTheme} // Use toggleTheme
           trackColor={{ false: "#767577", true: "#81b0ff" }}
-          thumbColor={darkMode ? "#f5dd4b" : "#f4f3f4"}
+          thumbColor={isDarkMode ? "#f5dd4b" : "#f4f3f4"}
         />
       </View>
 
       {/* Preferred Contact Method */}
-        <View style={styles.settingSection}>
-            <Text style={styles.sectionTitle}>Preferred Contact Method</Text>
+        <View style={[styles.settingSection, {backgroundColor: theme.cardBackground}]}>
+            <Text style={[styles.sectionTitle, {color: theme.text}]}>Preferred Contact Method</Text>
             <View style={styles.contactOptions}>
             <TouchableOpacity
-                style={[styles.contactOption, preferredContactMethod === 'text' && styles.selectedContactOption]}
+                style={[styles.contactOption, preferredContactMethod === 'text' && styles.selectedContactOption, {borderColor: theme.border}]}
                 onPress={() => handleContactMethodChange('text')}
             >
-                <Ionicons name="chatbox-ellipses-outline" size={24} color={preferredContactMethod === 'text' ? "white" : "black"} />
-                <Text style={[styles.contactOptionText, preferredContactMethod === 'text' && styles.selectedContactOptionText]}>Text</Text>
+                <Ionicons name="chatbox-ellipses-outline" size={24} color={preferredContactMethod === 'text' ? theme.selectedContactOptionText : theme.text} />
+                <Text style={[styles.contactOptionText, preferredContactMethod === 'text' && styles.selectedContactOptionText, {color: theme.text}]}>Text</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-                style={[styles.contactOption, preferredContactMethod === 'phone' && styles.selectedContactOption]}
+                style={[styles.contactOption, preferredContactMethod === 'phone' && styles.selectedContactOption, {borderColor: theme.border}]}
                 onPress={() => handleContactMethodChange('phone')}
             >
-                <Ionicons name="call-outline" size={24} color={preferredContactMethod === 'phone' ? "white" : "black"} />
-                <Text style={[styles.contactOptionText, preferredContactMethod === 'phone' && styles.selectedContactOptionText]}>Phone Call</Text>
+                <Ionicons name="call-outline" size={24} color={preferredContactMethod === 'phone' ? theme.selectedContactOptionText : theme.text} />
+                <Text style={[styles.contactOptionText, preferredContactMethod === 'phone' && styles.selectedContactOptionText, {color: theme.text}]}>Phone Call</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-                style={[styles.contactOption, preferredContactMethod === 'email' && styles.selectedContactOption]}
+                style={[styles.contactOption, preferredContactMethod === 'email' && styles.selectedContactOption, {borderColor: theme.border}]}
                 onPress={() => handleContactMethodChange('email')}
             >
-                <Ionicons name="mail-outline" size={24} color={preferredContactMethod === 'email' ? "white" : "black"} />
-                <Text style={[styles.contactOptionText, preferredContactMethod === 'email' && styles.selectedContactOptionText]}>Email</Text>
+                <Ionicons name="mail-outline" size={24} color={preferredContactMethod === 'email' ? theme.selectedContactOptionText : theme.text} />
+                <Text style={[styles.contactOptionText, preferredContactMethod === 'email' && styles.selectedContactOptionText, {color: theme.text}]}>Email</Text>
             </TouchableOpacity>
             </View>
         </View>
 
       {/* Notification Preferences */}
-      <View style={styles.settingSection}>
-        <Text style={styles.sectionTitle}>Notification Preferences</Text>
-        <View style={styles.settingItem}>
-          <Text style={styles.settingText}>Appointment Reminders</Text>
+      <View style={[styles.settingSection, {backgroundColor: theme.cardBackground}]}>
+        <Text style={[styles.sectionTitle, {color: theme.text}]}>Notification Preferences</Text>
+        <View style={[styles.settingItem, {backgroundColor: theme.cardBackground}]}>
+          <Text style={[styles.settingText, {color: theme.text}]}>Appointment Reminders</Text>
           <Switch
             value={appointmentReminders}
             onValueChange={setAppointmentReminders}
@@ -71,8 +73,8 @@ const SettingsScreen = ({navigation}) => { //Get navigation prop
             thumbColor={appointmentReminders ? "#007AFF" : "#f4f3f4"}
           />
         </View>
-        <View style={styles.settingItem}>
-          <Text style={styles.settingText}>Meal Reminders</Text>
+        <View style={[styles.settingItem, {backgroundColor: theme.cardBackground}]}>
+          <Text style={[styles.settingText, {color: theme.text}]}>Meal Reminders</Text>
           <Switch
             value={mealReminders}
             onValueChange={setMealReminders}
@@ -81,8 +83,8 @@ const SettingsScreen = ({navigation}) => { //Get navigation prop
 
           />
         </View>
-        <View style={styles.settingItem}>
-          <Text style={styles.settingText}>Progress Updates</Text>
+        <View style={[styles.settingItem, {backgroundColor: theme.cardBackground}]}>
+          <Text style={[styles.settingText, {color: theme.text}]}>Progress Updates</Text>
           <Switch
             value={progressUpdates}
             onValueChange={setProgressUpdates}
@@ -90,8 +92,8 @@ const SettingsScreen = ({navigation}) => { //Get navigation prop
             thumbColor={progressUpdates ? "#007AFF" : "#f4f3f4"}
           />
         </View>
-        <View style={styles.settingItem}>
-          <Text style={styles.settingText}>Coach Messages</Text>
+        <View style={[styles.settingItem, {backgroundColor: theme.cardBackground}]}>
+          <Text style={[styles.settingText, {color: theme.text}]}>Coach Messages</Text>
           <Switch
             value={coachMessages}
             onValueChange={setCoachMessages}
@@ -102,25 +104,25 @@ const SettingsScreen = ({navigation}) => { //Get navigation prop
       </View>
 
         {/* Support and Help Section */}
-        <View style={styles.settingSection}>
-            <Text style={styles.sectionTitle}>Support & Help</Text>
-            <TouchableOpacity style={styles.settingItem} onPress={()=> navigation.navigate('Support', {screen: 'FAQ'})}>
-                <Text style={styles.settingText}>FAQ</Text>
+        <View style={[styles.settingSection, {backgroundColor: theme.cardBackground}]}>
+            <Text style={[styles.sectionTitle, {color: theme.text}]}>Support & Help</Text>
+            <TouchableOpacity style={[styles.settingItem, {backgroundColor: theme.cardBackground}]} onPress={()=> navigation.navigate('Support', {screen: 'FAQ'})}>
+                <Text style={[styles.settingText, {color: theme.text}]}>FAQ</Text>
                 <Ionicons name='chevron-forward' size={24} color='gray'/>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.settingItem} onPress={()=> navigation.navigate('Support', {screen: 'ContactSupport'})}>
-                <Text style={styles.settingText}>Contact Support</Text>
+            <TouchableOpacity style={[styles.settingItem, {backgroundColor: theme.cardBackground}]} onPress={()=> navigation.navigate('Support', {screen: 'ContactSupport'})}>
+                <Text style={[styles.settingText, {color: theme.text}]}>Contact Support</Text>
                 <Ionicons name='chevron-forward' size={24} color='gray'/>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.settingItem} onPress={()=> navigation.navigate('Support', {screen: 'Terms'})}>
-                <Text style={styles.settingText}>Terms of Service</Text>
+            <TouchableOpacity style={[styles.settingItem, {backgroundColor: theme.cardBackground}]} onPress={()=> navigation.navigate('Support', {screen: 'Terms'})}>
+                <Text style={[styles.settingText, {color: theme.text}]}>Terms of Service</Text>
                 <Ionicons name='chevron-forward' size={24} color='gray'/>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.settingItem} onPress={()=> navigation.navigate('Support', {screen: 'PrivacyPolicy'})}>
-                <Text style={styles.settingText}>Privacy Policy</Text>
+            <TouchableOpacity style={[styles.settingItem, {backgroundColor: theme.cardBackground}]} onPress={()=> navigation.navigate('Support', {screen: 'PrivacyPolicy'})}>
+                <Text style={[styles.settingText, {color: theme.text}]}>Privacy Policy</Text>
                 <Ionicons name='chevron-forward' size={24} color='gray'/>
             </TouchableOpacity>
         </View>
@@ -133,7 +135,7 @@ const SettingsScreen = ({navigation}) => { //Get navigation prop
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    // backgroundColor: '#f0f0f0',
   },
   title: {
     fontSize: 24,
