@@ -12,6 +12,13 @@ import AddFoodScreen from '../screens/AddFoodScreen';
 import { Ionicons } from '@expo/vector-icons';
 import AddActionModal from '../components/AddActionModal';
 import { useTheme } from '../contexts/ThemeContext';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import RequestAppointmentScreen from '../screens/RequestAppointmentScreen';
+import RescheduleAppointmentScreen from '../screens/RescheduleAppointmentScreen';
+import WeightHistoryScreen from '../screens/WeightHistoryScreen';
+import DietPlanScreen from '../screens/DietPlanScreen';
+import DietPlanHistoryScreen from '../screens/DietPlanHistoryScreen';
+import AuthScreen from '../screens/AuthScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -152,10 +159,103 @@ const TabNavigator = () => {
 };
 
 const AppNavigator = () => {
+  const { theme } = useTheme();
+
+  const headerOptions = {
+    headerStyle: {
+      backgroundColor: theme.cardBackground,
+      borderBottomColor: theme.border,
+      borderBottomWidth: 1,
+      elevation: 0,
+      shadowOpacity: 0,
+    },
+    headerTintColor: theme.text,
+    headerTitleStyle: {
+      color: theme.text,
+      fontFamily: 'sans-serif-medium',
+    },
+    headerBackTitleVisible: false,
+    headerBackImage: () => (
+      <Ionicons name="chevron-back" size={24} color={theme.primary} style={{ marginLeft: 10 }} />
+    ),
+  };
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={TabNavigator} />
-      <Stack.Screen name="AddFood" component={AddFoodScreen} options={{ headerShown: true, title: 'Add Food' }} />
+      <Stack.Screen 
+        name="AddFood" 
+        component={AddFoodScreen} 
+        options={{ 
+          headerShown: true, 
+          title: 'Add Food',
+          ...headerOptions
+        }} 
+      />
+      <Stack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{
+          headerShown: true,
+          title: "Edit Profile",
+          presentation: 'modal',
+          ...headerOptions
+        }}
+      />
+      <Stack.Screen
+        name="RequestAppointment"
+        component={RequestAppointmentScreen}
+        options={{
+          headerShown: true,
+          title: "Request Appointment",
+          presentation: 'modal',
+          ...headerOptions
+        }}
+      />
+      <Stack.Screen
+        name="RescheduleAppointment"
+        component={RescheduleAppointmentScreen}
+        options={{
+          headerShown: true,
+          title: "Reschedule Appointment",
+          presentation: 'modal',
+          ...headerOptions
+        }}
+      />
+      <Stack.Screen
+        name="WeightHistory"
+        component={WeightHistoryScreen}
+        options={{
+          headerShown: true,
+          title: "Weight History",
+          ...headerOptions
+        }}
+      />
+      <Stack.Screen
+        name="DietPlan"
+        component={DietPlanScreen}
+        options={{
+          headerShown: true,
+          title: "Diet Plan Details",
+          ...headerOptions
+        }}
+      />
+      <Stack.Screen
+        name="DietPlanHistory"
+        component={DietPlanHistoryScreen}
+        options={{
+          headerShown: true,
+          title: "Diet Plan History",
+          ...headerOptions
+        }}
+      />
+      <Stack.Screen
+        name="Auth"
+        component={AuthScreen}
+        options={{
+          headerShown: false
+        }}
+      />
     </Stack.Navigator>
   );
 };

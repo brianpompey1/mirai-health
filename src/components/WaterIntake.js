@@ -28,15 +28,25 @@ const WaterIntake = ({ intake, goal, onAddWater, onRemoveWater, unit = 'oz', onU
         </View>
       </View>
       <View style={[styles.progressBarContainer, { backgroundColor: theme.background }]}>
-        <View
-          style={[
-            styles.progressBar,
-            {
-              width: `${Math.min(100, progress)}%`,
-              backgroundColor: progress > 100 ? 'red' : '#007AFF',
-            },
-          ]}
-        />
+        <View style={styles.progressBarWrapper}>
+          <View
+            style={[
+              styles.progressBar,
+              {
+                width: `${Math.min(100, progress)}%`,
+                backgroundColor: progress > 100 ? '#FF6B6B' : '#4ECDC4',
+              },
+            ]}
+          >
+            <View style={styles.progressBarGlow} />
+          </View>
+        </View>
+        <View style={styles.progressMarkers}>
+          <View style={styles.marker} />
+          <View style={styles.marker} />
+          <View style={styles.marker} />
+          <View style={styles.marker} />
+        </View>
       </View>
       <Text style={[styles.intakeText, { color: theme.text }]}>
         {formatNumber(intake)} / {formatNumber(goal)} {unit}
@@ -85,16 +95,47 @@ const styles = StyleSheet.create({
     fontFamily: 'sans-serif-medium',
   },
   progressBarContainer: {
-    height: 20,
     width: '100%',
-    backgroundColor: '#E0E0E0',
-    borderRadius: 10,
-    overflow: 'hidden',
     marginBottom: 5,
+  },
+  progressBarWrapper: {
+    height: 24,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
   },
   progressBar: {
     height: '100%',
-    borderRadius: 10,
+    borderRadius: 12,
+    position: 'relative',
+  },
+  progressBarGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderTopWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  progressMarkers: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  marker: {
+    width: 2,
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 1,
   },
   intakeText: {
     fontSize: 16,

@@ -101,40 +101,43 @@ const RescheduleAppointmentScreen = ({ navigation, route }) => {
       return;
     }
 
-    const appointmentDateTime = new Date(selectedDate);
-    appointmentDateTime.setHours(selectedTime.getHours());
-    appointmentDateTime.setMinutes(selectedTime.getMinutes());
-    appointmentDateTime.setSeconds(0, 0);
-
     setLoading(true);
     try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-        if (authError || !user) {
-            Alert.alert('Error', 'You must be logged in to reschedule an appointment.');
-            navigation.navigate('Auth'); // Redirect to login
-            return;
-        }
+      // Combine date and time
+      const combinedDateTime = new Date(selectedDate);
+      combinedDateTime.setHours(selectedTime.getHours());
+      combinedDateTime.setMinutes(selectedTime.getMinutes());
 
       const { error } = await supabase
         .from('appointments')
         .update({
-          date_time: appointmentDateTime.toISOString(),
-          notes: notes, // Include updated notes
-          status: 'pending', // Reset status to pending after reschedule. Good practice
+          date_time: combinedDateTime.toISOString(),
+          notes: notes,
+          updated_at: new Date().toISOString()
         })
-        .eq('id', appointmentId)
-        .eq('user_id', user.id); // *Crucial* for security (RLS)
+        .eq('id', appointmentId);
 
       if (error) {
-        console.error('Error rescheduling appointment:', error);
-        Alert.alert('Error', error.message);
-      } else {
-        Alert.alert('Success', 'Appointment rescheduled successfully!');
-        navigation.goBack(); // Navigate back to the Profile screen
+        console.error('Error updating appointment:', error);
+        Alert.alert('Error', 'Failed to reschedule appointment.');
+        return;
       }
-    } catch (error) {
-      console.error('Unexpected error:', error);
+
+      Alert.alert(
+        'Success',
+        'Appointment rescheduled successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate back and trigger a refresh
+              navigation.navigate('Profile', { refresh: Date.now() });
+            }
+          }
+        ]
+      );
+    } catch (err) {
+      console.error('Unexpected error:', err);
       Alert.alert('Error', 'An unexpected error occurred.');
     } finally {
       setLoading(false);
