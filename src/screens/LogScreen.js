@@ -161,6 +161,66 @@ const styles = StyleSheet.create({
     actionText: {
         fontSize: 16,
         fontWeight: '500',
+    },
+    summarySection: {
+        padding: 15,
+        borderRadius: 10,
+        marginBottom: 15,
+        marginHorizontal: 15,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    exerciseSection: {
+        padding: 15,
+        borderRadius: 10,
+        marginBottom: 15,
+        marginHorizontal: 15,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    exerciseTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    exerciseText: {
+        fontSize: 16,
+    },
+    progressContainer: {
+        marginVertical: 8,
+    },
+    progressLabelContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    progressLabel: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    progressValue: {
+        fontSize: 16,
+    },
+    progressBar: {
+        height: 8,
+        borderRadius: 4,
+        overflow: 'hidden',
+    },
+    progressFill: {
+        height: '100%',
+        borderRadius: 4,
     }
 });
 
@@ -172,7 +232,7 @@ const LogScreen = ({ navigation, route }) => {
     });
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
     const [logData, setLogData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [waterIntake, setWaterIntake] = useState(0); // Store in ml internally
     const [waterGoal, setWaterGoal] = useState(64); // Default to 64 oz (8 cups)
@@ -183,79 +243,104 @@ const LogScreen = ({ navigation, route }) => {
 
     const fetchLogData = async () => {
         try {
-            setLoading(true);
+            setIsLoading(true);
 
             // Get current user
             const { data: { user }, error: authError } = await supabase.auth.getUser();
-            if (authError || !user) {
-                console.error('Auth error:', authError);
-                navigation.navigate('Auth');
-                return;
-            }
+            if (!user) return;
 
-            const dateString = selectedDate.toISOString().split('T')[0];
-            const { data: existingLog, error: logError } = await supabase
-                .from('daily_food_logs')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('date', dateString)
-                .single();
+            try {
+                const dateString = selectedDate.toISOString().split('T')[0];
 
-            if (logError && logError.code !== 'PGRST116') {
-                console.error('Error fetching log:', logError);
-                return;
-            }
-
-            let log = existingLog;
-            if (!log) {
-                const { data: newLog, error: createError } = await supabase
-                    .from('daily_food_logs')
-                    .insert([
-                        {
-                            user_id: user.id,
-                            date: dateString,
-                            vegetable_servings: 0,
-                            fruit_servings: 0,
-                            total_protein_calories: 0
-                        }
-                    ])
-                    .select()
+                // Fetch user's protein calorie target
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('daily_protein_calorie_target')
+                    .eq('id', user.id)
                     .single();
 
-                if (createError) {
-                    console.error('Error creating log:', createError);
+                if (userError) {
+                    console.error('Error fetching user data:', userError);
                     return;
                 }
-                log = newLog;
-            }
 
-            // Fetch meals with their associated food items
-            const { data: meals, error: mealsError } = await supabase
-                .from('meals')
-                .select(`
-                    id,
-                    type,
-                    time,
-                    food_items (
+                // Fetch daily food log
+                const { data: logData, error: logError } = await supabase
+                    .from('daily_food_logs')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .eq('date', dateString)
+                    .single();
+
+                if (logError && logError.code !== 'PGRST116') {
+                    console.error('Error fetching daily log:', logError);
+                    return;
+                }
+
+                // Fetch daily summary for water and exercise
+                const { data: summaryData, error: summaryError } = await supabase
+                    .from('daily_summaries')
+                    .select('water_intake, exercise_summary')
+                    .eq('user_id', user.id)
+                    .eq('date', dateString)
+                    .single();
+
+                if (summaryError && summaryError.code !== 'PGRST116') {
+                    console.error('Error fetching daily summary:', summaryError);
+                }
+
+                // Fetch meals with their associated food items
+                const { data: meals, error: mealsError } = await supabase
+                    .from('meals')
+                    .select(`
                         id,
-                        name,
-                        servings
-                    )
-                `)
-                .eq('user_id', user.id)
-                .eq('date', dateString)
-                .order('time', { ascending: true });
+                        type,
+                        time,
+                        food_items (
+                            id,
+                            name,
+                            servings
+                        )
+                    `)
+                    .eq('user_id', user.id)
+                    .eq('date', dateString)
+                    .order('time', { ascending: true });
 
-            if (mealsError) {
-                console.error('Error fetching meals:', mealsError);
-                return;
+                if (mealsError) {
+                    console.error('Error fetching meals:', mealsError);
+                    return;
+                }
+
+                // Initialize log with default values if it doesn't exist
+                const log = logData || {
+                    id: null,
+                    user_id: user.id,
+                    date: dateString,
+                    total_protein_calories: 0,
+                    vegetable_servings: 0,
+                    fruit_servings: 0
+                };
+
+                // Add water, exercise data, and goals
+                setLogData({ 
+                    ...log, 
+                    meals: meals || [],
+                    water_intake: summaryData?.water_intake || 0,
+                    exercise_summary: summaryData?.exercise_summary || '',
+                    protein_calorie_allowance: userData?.daily_protein_calorie_target || 2000,
+                    vegetable_servings_goal: 2,  // Fixed value per diet plan specs
+                    fruit_servings_goal: 1       // Fixed value per diet plan specs
+                });
+
+            } catch (error) {
+                console.error('Error in fetchLogData:', error);
+            } finally {
+                setIsLoading(false);
             }
-
-            setLogData({ ...log, meals: meals || [] });
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error in fetchLogData:', error);
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
@@ -438,34 +523,110 @@ const LogScreen = ({ navigation, route }) => {
     const renderSummary = () => {
         if (!logData) return null;
         
+        // Calculate progress percentages
+        const proteinProgress = Math.min((logData.total_protein_calories / logData.protein_calorie_allowance) * 100, 100);
+        const vegetableProgress = Math.min((logData.vegetable_servings / logData.vegetable_servings_goal) * 100, 100);
+        const fruitProgress = Math.min((logData.fruit_servings / logData.fruit_servings_goal) * 100, 100);
+        
         return (
-            <View style={[styles.summaryContainer, { backgroundColor: theme.background }]}>
-                <Text style={[styles.summaryTitle, { color: theme.text }]}>Daily Summary</Text>
-                <View style={styles.summaryRow}>
-                    <Text style={[styles.summaryText, { color: theme.text }]}>
-                        Vegetable Servings: {logData.vegetable_servings}/2
-                    </Text>
+            <View style={[styles.summarySection, { backgroundColor: theme.cardBackground }]}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Daily Summary</Text>
+                
+                {/* Protein Calories */}
+                <View style={styles.progressContainer}>
+                    <View style={styles.progressLabelContainer}>
+                        <Text style={[styles.progressLabel, { color: theme.text }]}>
+                            Protein Calories
+                        </Text>
+                        <Text style={[styles.progressValue, { color: theme.text }]}>
+                            {logData.total_protein_calories} / {logData.protein_calorie_allowance}
+                        </Text>
+                    </View>
+                    <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
+                        <View 
+                            style={[
+                                styles.progressFill, 
+                                { 
+                                    width: `${proteinProgress}%`,
+                                    backgroundColor: proteinProgress >= 100 ? theme.success : theme.primary
+                                }
+                            ]} 
+                        />
+                    </View>
                 </View>
-                <View style={styles.summaryRow}>
-                    <Text style={[styles.summaryText, { color: theme.text }]}>
-                        Fruit Servings: {logData.fruit_servings}/1
-                    </Text>
+
+                {/* Vegetable Servings */}
+                <View style={styles.progressContainer}>
+                    <View style={styles.progressLabelContainer}>
+                        <Text style={[styles.progressLabel, { color: theme.text }]}>
+                            Vegetable Servings
+                        </Text>
+                        <Text style={[styles.progressValue, { color: theme.text }]}>
+                            {logData.vegetable_servings} / {logData.vegetable_servings_goal}
+                        </Text>
+                    </View>
+                    <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
+                        <View 
+                            style={[
+                                styles.progressFill, 
+                                { 
+                                    width: `${vegetableProgress}%`,
+                                    backgroundColor: vegetableProgress >= 100 ? theme.success : theme.primary
+                                }
+                            ]} 
+                        />
+                    </View>
                 </View>
-                <View style={styles.summaryRow}>
-                    <Text style={[styles.summaryText, { color: theme.text }]}>
-                        Total Protein Calories: {logData.total_protein_calories}
-                    </Text>
+
+                {/* Fruit Servings */}
+                <View style={styles.progressContainer}>
+                    <View style={styles.progressLabelContainer}>
+                        <Text style={[styles.progressLabel, { color: theme.text }]}>
+                            Fruit Servings
+                        </Text>
+                        <Text style={[styles.progressValue, { color: theme.text }]}>
+                            {logData.fruit_servings} / {logData.fruit_servings_goal}
+                        </Text>
+                    </View>
+                    <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
+                        <View 
+                            style={[
+                                styles.progressFill, 
+                                { 
+                                    width: `${fruitProgress}%`,
+                                    backgroundColor: fruitProgress >= 100 ? theme.success : theme.primary
+                                }
+                            ]} 
+                        />
+                    </View>
                 </View>
-                <View style={styles.summaryRow}>
-                    <Text style={[styles.summaryText, { color: theme.text }]}>
-                        Water Intake: {waterIntake} oz
-                    </Text>
+
+                {/* Water Intake */}
+                <View style={styles.progressContainer}>
+                    <View style={styles.progressLabelContainer}>
+                        <Text style={[styles.progressLabel, { color: theme.text }]}>
+                            Water Intake
+                        </Text>
+                        <Text style={[styles.progressValue, { color: theme.text }]}>
+                            {logData.water_intake} glasses
+                        </Text>
+                    </View>
                 </View>
+
+                {/* Exercise Summary */}
+                {logData.exercise_summary && (
+                    <View style={styles.exerciseSection}>
+                        <Text style={[styles.exerciseTitle, { color: theme.text }]}>Exercise</Text>
+                        <Text style={[styles.exerciseText, { color: theme.text }]}>
+                            {logData.exercise_summary}
+                        </Text>
+                    </View>
+                )}
             </View>
         );
     };
 
-    if (loading) {
+    if (isLoading) {
         return (
             <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
                 <ActivityIndicator size="large" color="#007AFF" />

@@ -12,6 +12,7 @@ import SupportNavigator from './SupportNavigator';
 import RescheduleAppointmentScreen from '../screens/RescheduleAppointmentScreen';
 import AddExerciseScreen from '../screens/AddExerciseScreen';
 import WeightHistoryScreen from '../screens/WeightHistoryScreen';
+import ThemeSettingsScreen from '../screens/ThemeSettingsScreen';
 
 const ProfileStack = createNativeStackNavigator();
 
@@ -97,6 +98,14 @@ const ProfileNavigator = () => {
         name="WeightHistory" 
         component={WeightHistoryScreen}
         options={{ title: "Weight History" }}
+      />
+      <ProfileStack.Screen 
+        name="ThemeSettings" 
+        component={ThemeSettingsScreen}
+        options={{
+          title: 'Theme Settings',
+          headerBackTitle: 'Back'
+        }}
       />
     </ProfileStack.Navigator>
   );

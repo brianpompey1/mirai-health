@@ -602,6 +602,25 @@ const styles = StyleSheet.create({
     marginTop: 10,
     alignItems: 'center',
   },
+  settingItem: {
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    margin: 10,
+    elevation: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  settingContent: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  settingText: {
+    fontSize: 16,
+    fontFamily: 'sans-serif-medium',
+    marginLeft: 10
+  }
 });
 
 export default ProfileScreen;
