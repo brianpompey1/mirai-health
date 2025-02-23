@@ -431,6 +431,55 @@ const styles = StyleSheet.create({
     exerciseItemContainer: {
         marginBottom: 8,
     },
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        width: '90%',
+        borderRadius: 15,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+    },
+    closeButton: {
+        padding: 5,
+    },
+    exerciseInput: {
+        borderWidth: 1,
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 20,
+        minHeight: 100,
+        textAlignVertical: 'top',
+    },
+    saveButton: {
+        padding: 15,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    saveButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
 });
 
 const LogScreen = ({ navigation, route }) => {
@@ -446,7 +495,9 @@ const LogScreen = ({ navigation, route }) => {
     const waterUnit = 'oz';
     const WATER_INCREMENT = 8; // 8 oz increment
     const [selectedMeal, setSelectedMeal] = useState(null);
-    const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+    const [isExerciseModalVisible, setIsExerciseModalVisible] = useState(false);
+    const [exercise, setExercise] = useState('');
+    const [editingExerciseId, setEditingExerciseId] = useState(null);
     const { theme } = useTheme();
     const [userId, setUserId] = useState(null);
 
@@ -460,6 +511,61 @@ const LogScreen = ({ navigation, route }) => {
         
         fetchUser();
     }, []);
+
+    const fetchData = async () => {
+        if (!userId) return;
+        
+        try {
+            const dateString = selectedDate.toISOString().split('T')[0];
+            
+            // Fetch daily summary
+            const { data: summaryData, error: summaryError } = await supabase
+                .from('daily_summaries')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('date', dateString)
+                .single();
+
+            if (summaryError && summaryError.code !== 'PGRST116') {
+                console.error('Error fetching daily summary:', summaryError);
+                return;
+            }
+
+            // Update water intake
+            if (summaryData?.water_intake !== undefined) {
+                setWaterIntake(summaryData.water_intake);
+            }
+
+            // Update exercise summary
+            if (summaryData?.exercise_summary) {
+                setExerciseSummary(summaryData.exercise_summary);
+            } else {
+                setExerciseSummary('');
+            }
+
+            // Fetch meals
+            const { data: mealsData, error: mealsError } = await supabase
+                .from('meals')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('date', dateString);
+
+            if (mealsError) {
+                console.error('Error fetching meals:', mealsError);
+                return;
+            }
+
+            setMeals(mealsData || []);
+
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            Alert.alert('Error', 'Failed to fetch data');
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, [userId, selectedDate]);
 
     useFocusEffect(
         useCallback(() => {
@@ -617,42 +723,65 @@ const LogScreen = ({ navigation, route }) => {
     };
 
     const handleEditExercise = (exercise) => {
-        // Navigate to edit exercise screen with exercise data
-        navigation.navigate('AddExercise', { exercise });
+        setExercise(exercise.name);
+        setEditingExerciseId(exercise.name);
+        setIsExerciseModalVisible(true);
     };
 
-    const handleDeleteExercise = async (exerciseId) => {
+    const handleDeleteExercise = async (exercise) => {
         try {
-            // First get the current exercise summary
             const dateString = selectedDate.toISOString().split('T')[0];
-            const { data: summaryData } = await supabase
+            
+            // Get current exercise summary
+            const { data: summaryData, error: fetchError } = await supabase
                 .from('daily_summaries')
-                .select('exercise_summary')
+                .select('*')
                 .eq('user_id', userId)
                 .eq('date', dateString)
                 .single();
 
-            if (summaryData) {
-                // Remove the exercise from the summary
-                const exercises = summaryData.exercise_summary
+            if (fetchError && fetchError.code !== 'PGRST116') {
+                console.error('Error fetching summary:', fetchError);
+                Alert.alert('Error', 'Failed to delete exercise');
+                return;
+            }
+
+            // Filter out the exercise to delete
+            const currentExercises = summaryData?.exercise_summary
+                ? summaryData.exercise_summary
                     .split(',')
                     .map(ex => ex.trim())
-                    .filter(ex => ex !== '');
-                
-                const updatedExercises = exercises.filter(ex => ex !== exerciseId);
-                
-                // Update the daily summary
-                const { error } = await supabase
-                    .from('daily_summaries')
-                    .update({ exercise_summary: updatedExercises.join(', ') })
-                    .eq('user_id', userId)
-                    .eq('date', dateString);
+                    .filter(ex => ex !== '')
+                : [];
+            
+            const updatedExercises = currentExercises.filter(ex => ex !== exercise.name);
 
-                if (error) throw error;
+            // Update the daily summary
+            const { error: updateError } = await supabase
+                .from('daily_summaries')
+                .update({
+                    exercise_summary: updatedExercises.join(', '),
+                    water_intake: summaryData?.water_intake || 0,
+                    exercise_calories: summaryData?.exercise_calories || 0,
+                    total_protein_calories: summaryData?.total_protein_calories || 0,
+                    fruit_servings: summaryData?.fruit_servings || 0,
+                    vegetable_servings: summaryData?.vegetable_servings || 0,
+                    miscellaneous_servings: summaryData?.miscellaneous_servings || 0,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', summaryData.id);
 
-                // Refresh data
-                fetchData();
+            if (updateError) {
+                console.error('Error updating summary:', updateError);
+                Alert.alert('Error', 'Failed to delete exercise');
+                return;
             }
+
+            // Update local state immediately
+            setExerciseSummary(updatedExercises.join(', '));
+            
+            // Then refresh all data
+            fetchData();
         } catch (error) {
             console.error('Error deleting exercise:', error);
             Alert.alert('Error', 'Failed to delete exercise');
@@ -670,20 +799,7 @@ const LogScreen = ({ navigation, route }) => {
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.rightAction, styles.deleteAction]}
-                    onPress={() => {
-                        Alert.alert(
-                            'Delete Meal',
-                            'Are you sure you want to delete this meal?',
-                            [
-                                { text: 'Cancel', style: 'cancel' },
-                                { 
-                                    text: 'Delete', 
-                                    onPress: () => handleDeleteMeal(meal.id),
-                                    style: 'destructive'
-                                }
-                            ]
-                        );
-                    }}
+                    onPress={() => handleDeleteMeal(meal.id)}
                 >
                     <Ionicons name="trash" size={24} color="white" />
                 </TouchableOpacity>
@@ -922,6 +1038,135 @@ const LogScreen = ({ navigation, route }) => {
         }
     };
 
+    const handleSaveExercise = async () => {
+        if (!exercise.trim() || isSubmitting) return;
+        
+        try {
+            setIsSubmitting(true);
+            const dateString = selectedDate.toISOString().split('T')[0];
+            
+            // First get the current exercise summary
+            const { data: summaryData, error: fetchError } = await supabase
+                .from('daily_summaries')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('date', dateString)
+                .single();
+
+            if (fetchError && fetchError.code !== 'PGRST116') {
+                console.error('Error fetching daily summary:', fetchError);
+                return;
+            }
+
+            let currentExercises = summaryData?.exercise_summary
+                ? summaryData.exercise_summary.split(',').map(ex => ex.trim()).filter(ex => ex !== '')
+                : [];
+
+            if (editingExerciseId !== null) {
+                // If editing, replace the old exercise
+                const exerciseIndex = currentExercises.indexOf(editingExerciseId);
+                if (exerciseIndex !== -1) {
+                    currentExercises[exerciseIndex] = exercise.trim();
+                }
+            } else {
+                // If adding new, append to the list
+                currentExercises.push(exercise.trim());
+            }
+
+            // Update the daily summary
+            const { error: updateError } = await supabase
+                .from('daily_summaries')
+                .upsert({
+                    id: summaryData?.id,
+                    user_id: userId,
+                    date: dateString,
+                    exercise_summary: currentExercises.join(', '),
+                    water_intake: summaryData?.water_intake || 0
+                });
+
+            if (updateError) throw updateError;
+
+            // Clear the input and close modal
+            setExercise('');
+            setEditingExerciseId(null);
+            setIsExerciseModalVisible(false);
+            
+            // Refresh data
+            await fetchData();
+        } catch (error) {
+            console.error('Error saving exercise:', error);
+            Alert.alert('Error', 'Failed to save exercise');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const renderExerciseModal = () => (
+        <Modal
+            visible={isExerciseModalVisible}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => {
+                setExercise('');
+                setEditingExerciseId(null);
+                setIsExerciseModalVisible(false);
+            }}
+        >
+            <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+                <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
+                    <View style={styles.modalHeader}>
+                        <Text style={[styles.modalTitle, { color: theme.text }]}>
+                            {editingExerciseId ? 'Edit Exercise' : 'Add Exercise'}
+                        </Text>
+                        <TouchableOpacity 
+                            onPress={() => {
+                                setExercise('');
+                                setEditingExerciseId(null);
+                                setIsExerciseModalVisible(false);
+                            }}
+                            style={styles.closeButton}
+                        >
+                            <Ionicons name="close" size={24} color={theme.text} />
+                        </TouchableOpacity>
+                    </View>
+                    
+                    <TextInput
+                        style={[
+                            styles.exerciseInput,
+                            { 
+                                backgroundColor: theme.inputBackground,
+                                color: theme.text,
+                                borderColor: theme.border
+                            }
+                        ]}
+                        placeholder="What exercise did you do today?"
+                        placeholderTextColor={theme.textSecondary}
+                        value={exercise}
+                        onChangeText={setExercise}
+                        multiline
+                        numberOfLines={4}
+                    />
+
+                    <TouchableOpacity
+                        style={[
+                            styles.saveButton,
+                            {
+                                backgroundColor: theme.importantButton,
+                                opacity: exercise.trim() ? 1 : 0.5
+                            }
+                        ]}
+                        onPress={handleSaveExercise}
+                        disabled={!exercise.trim() || isSubmitting}
+                    >
+                        <Text style={[styles.saveButtonText, { color: theme.importantButtonText }]}>
+                            {isSubmitting ? 'Saving...' : (editingExerciseId ? 'Update Exercise' : 'Save Exercise')}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+
     if (isLoading) {
         return (
             <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
@@ -932,6 +1177,7 @@ const LogScreen = ({ navigation, route }) => {
 
     return (
         <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+            {renderExerciseModal()}
             <View style={styles.container}>
                 {/* Date Navigation */}
                 <View style={[styles.dateNavigation, { backgroundColor: theme.cardBackground }]}>
@@ -1028,7 +1274,7 @@ const LogScreen = ({ navigation, route }) => {
                             <Text style={[styles.sectionTitle, { color: theme.text }]}>Exercise</Text>
                             <TouchableOpacity
                                 style={[styles.addButton, { backgroundColor: theme.importantButton }]}
-                                onPress={() => navigation.navigate('AddExercise')}
+                                onPress={() => setIsExerciseModalVisible(true)}
                             >
                                 <Text style={[styles.addButtonText, { color: theme.importantButtonText }]}>
                                     + Add Exercise

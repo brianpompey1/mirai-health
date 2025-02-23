@@ -35,6 +35,7 @@ const DashboardScreen = ({ navigation }) => {
   const [exerciseSummary, setExerciseSummary] = useState('');
   const [isAddActionModalVisible, setIsAddActionModalVisible] = useState(false);
   const [isExerciseModalVisible, setIsExerciseModalVisible] = useState(false);
+  const [editingExerciseId, setEditingExerciseId] = useState(null);
   const [lastWaterFetchDate, setLastWaterFetchDate] = useState(null);
 
   const waterUnit = 'oz';
@@ -80,6 +81,61 @@ const DashboardScreen = ({ navigation }) => {
     }
     fetchUser();
   }, [])
+
+  const fetchData = async () => {
+    if (!userId) return;
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Fetch daily summary
+      const { data: summaryData, error: summaryError } = await supabase
+        .from('daily_summaries')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .single();
+
+      if (summaryError && summaryError.code !== 'PGRST116') {
+        console.error('Error fetching daily summary:', summaryError);
+        return;
+      }
+
+      // Update water intake
+      if (summaryData?.water_intake !== undefined) {
+        setWaterIntake(summaryData.water_intake);
+      }
+
+      // Update exercise summary
+      if (summaryData?.exercise_summary) {
+        setExerciseSummary(summaryData.exercise_summary);
+      } else {
+        setExerciseSummary('');
+      }
+
+      // Fetch meals
+      const { data: mealsData, error: mealsError } = await supabase
+        .from('meals')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('date', today);
+
+      if (mealsError) {
+        console.error('Error fetching meals:', mealsError);
+        return;
+      }
+
+      setMeals(mealsData || []);
+
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      Alert.alert('Error', 'Failed to fetch data');
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [userId]);
 
   const fetchDailySummary = async () => {
     if (!userId) return;
@@ -282,14 +338,14 @@ const DashboardScreen = ({ navigation }) => {
   };
 
   const handleSaveExercise = async () => {
-    if (!userId || isSubmitting || !exercise.trim()) return;
-
+    if (!exercise.trim() || isSubmitting) return;
+    
     try {
       setIsSubmitting(true);
       const today = new Date().toISOString().split('T')[0];
-
-      // First check if there's an existing record for today
-      const { data: existingData, error: fetchError } = await supabase
+      
+      // First get the current exercise summary
+      const { data: summaryData, error: fetchError } = await supabase
         .from('daily_summaries')
         .select('*')
         .eq('user_id', userId)
@@ -301,38 +357,44 @@ const DashboardScreen = ({ navigation }) => {
         return;
       }
 
-      // Prepare the new exercise summary
-      const newExerciseSummary = existingData?.exercise_summary 
-        ? `${existingData.exercise_summary}\n${exercise.trim()}`
-        : exercise.trim();
+      let currentExercises = summaryData?.exercise_summary
+        ? summaryData.exercise_summary.split(',').map(ex => ex.trim()).filter(ex => ex !== '')
+        : [];
 
-      // Prepare the data for upsert
-      const summaryData = {
-        ...(existingData?.id ? { id: existingData.id } : {}),
-        user_id: userId,
-        date: today,
-        exercise_summary: newExerciseSummary,
-        water_intake: existingData?.water_intake || waterIntake
-      };
-
-      const { error } = await supabase
-        .from('daily_summaries')
-        .upsert(summaryData);
-
-      if (error) {
-        console.error('Error saving exercise:', error);
-        Alert.alert('Error', 'Failed to save exercise');
-        return;
+      if (editingExerciseId !== null) {
+        // If editing, replace the old exercise
+        const exerciseIndex = currentExercises.indexOf(editingExerciseId);
+        if (exerciseIndex !== -1) {
+          currentExercises[exerciseIndex] = exercise.trim();
+        }
+      } else {
+        // If adding new, append to the list
+        currentExercises.push(exercise.trim());
       }
 
-      setExerciseSummary(newExerciseSummary);
-      setExercise(''); // Clear input
-      setIsExerciseModalVisible(false); // Close modal
-      Alert.alert('Success', 'Exercise saved successfully');
+      // Update the daily summary
+      const { error: updateError } = await supabase
+        .from('daily_summaries')
+        .upsert({
+          id: summaryData?.id,
+          user_id: userId,
+          date: today,
+          exercise_summary: currentExercises.join(', '),
+          water_intake: summaryData?.water_intake || 0
+        });
 
+      if (updateError) throw updateError;
+
+      // Clear the input and close modal
+      setExercise('');
+      setEditingExerciseId(null);
+      setIsExerciseModalVisible(false);
+      
+      // Refresh data
+      await fetchData();
     } catch (error) {
       console.error('Error saving exercise:', error);
-      Alert.alert('Error', 'An unexpected error occurred');
+      Alert.alert('Error', 'Failed to save exercise');
     } finally {
       setIsSubmitting(false);
     }
@@ -393,42 +455,65 @@ const DashboardScreen = ({ navigation }) => {
   };
 
   const handleEditExercise = (exercise) => {
-    // Navigate to edit exercise screen with exercise data
-    navigation.navigate('AddExercise', { exercise });
+    setExercise(exercise.name);
+    setEditingExerciseId(exercise.name);
+    setIsExerciseModalVisible(true);
   };
 
-  const handleDeleteExercise = async (exerciseId) => {
+  const handleDeleteExercise = async (exercise) => {
     try {
-      // First get the current exercise summary
       const today = new Date().toISOString().split('T')[0];
-      const { data: summaryData } = await supabase
+      
+      // Get current exercise summary
+      const { data: summaryData, error: fetchError } = await supabase
         .from('daily_summaries')
-        .select('exercise_summary')
+        .select('*')
         .eq('user_id', userId)
         .eq('date', today)
         .single();
 
-      if (summaryData) {
-        // Remove the exercise from the summary
-        const exercises = summaryData.exercise_summary
-          .split(',')
-          .map(ex => ex.trim())
-          .filter(ex => ex !== '');
-        
-        const updatedExercises = exercises.filter(ex => ex !== exerciseId);
-        
-        // Update the daily summary
-        const { error } = await supabase
-          .from('daily_summaries')
-          .update({ exercise_summary: updatedExercises.join(', ') })
-          .eq('user_id', userId)
-          .eq('date', today);
-
-        if (error) throw error;
-
-        // Refresh exercise data
-        fetchData();
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching summary:', fetchError);
+        Alert.alert('Error', 'Failed to delete exercise');
+        return;
       }
+
+      // Filter out the exercise to delete
+      const currentExercises = summaryData?.exercise_summary
+        ? summaryData.exercise_summary
+            .split(',')
+            .map(ex => ex.trim())
+            .filter(ex => ex !== '')
+        : [];
+      
+      const updatedExercises = currentExercises.filter(ex => ex !== exercise.name);
+
+      // Update the daily summary
+      const { error: updateError } = await supabase
+        .from('daily_summaries')
+        .update({
+          exercise_summary: updatedExercises.join(', '),
+          water_intake: summaryData?.water_intake || 0,
+          exercise_calories: summaryData?.exercise_calories || 0,
+          total_protein_calories: summaryData?.total_protein_calories || 0,
+          fruit_servings: summaryData?.fruit_servings || 0,
+          vegetable_servings: summaryData?.vegetable_servings || 0,
+          miscellaneous_servings: summaryData?.miscellaneous_servings || 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', summaryData.id);
+
+      if (updateError) {
+        console.error('Error updating summary:', updateError);
+        Alert.alert('Error', 'Failed to delete exercise');
+        return;
+      }
+
+      // Update local state immediately
+      setExerciseSummary(updatedExercises.join(', '));
+      
+      // Then refresh all data
+      fetchData();
     } catch (error) {
       console.error('Error deleting exercise:', error);
       Alert.alert('Error', 'Failed to delete exercise');
@@ -440,14 +525,24 @@ const DashboardScreen = ({ navigation }) => {
       visible={isExerciseModalVisible}
       animationType="slide"
       transparent={true}
-      onRequestClose={() => setIsExerciseModalVisible(false)}
+      onRequestClose={() => {
+        setExercise('');
+        setEditingExerciseId(null);
+        setIsExerciseModalVisible(false);
+      }}
     >
       <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
         <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
           <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Add Exercise</Text>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              {editingExerciseId ? 'Edit Exercise' : 'Add Exercise'}
+            </Text>
             <TouchableOpacity 
-              onPress={() => setIsExerciseModalVisible(false)}
+              onPress={() => {
+                setExercise('');
+                setEditingExerciseId(null);
+                setIsExerciseModalVisible(false);
+              }}
               style={styles.closeButton}
             >
               <Ionicons name="close" size={24} color={theme.text} />
@@ -483,7 +578,7 @@ const DashboardScreen = ({ navigation }) => {
             disabled={!exercise.trim() || isSubmitting}
           >
             <Text style={[styles.saveButtonText, { color: theme.importantButtonText }]}>
-              {isSubmitting ? 'Saving...' : 'Save Exercise'}
+              {isSubmitting ? 'Saving...' : (editingExerciseId ? 'Update Exercise' : 'Save Exercise')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -493,6 +588,7 @@ const DashboardScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      {renderExerciseModal()}
       <View style={{ flex: 1 }}>
         <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
           {/* Header with Profile and Welcome */}
@@ -672,7 +768,7 @@ const DashboardScreen = ({ navigation }) => {
                     borderColor: theme.border,
                   },
                 ]}
-                onPress={() => navigation.navigate('AddExercise')}
+                onPress={() => setIsExerciseModalVisible(true)}
               >
                 <Text style={[styles.addButtonText, { color: theme.importantButtonText }]}>+ Add Exercise</Text>
               </TouchableOpacity>
@@ -713,10 +809,7 @@ const DashboardScreen = ({ navigation }) => {
               },
               {
                 text: 'Yes',
-                onPress: () => {
-                  // Add your complete day logic here
-                  Alert.alert('Success', 'Day completed successfully!');
-                },
+                onPress: handleCompleteDay,
               },
             ]);
           }}
@@ -727,7 +820,6 @@ const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {renderExerciseModal()}
       {isAddActionModalVisible && (
         <AddActionModal
           onClose={() => setIsAddActionModalVisible(false)}
@@ -1014,7 +1106,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 });
 

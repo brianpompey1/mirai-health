@@ -18,7 +18,7 @@ const ExerciseItem = ({ exercise, onEdit, onDelete }) => {
         },
         {
           text: "Delete",
-          onPress: () => onDelete(exercise.id),
+          onPress: () => onDelete(exercise),
           style: "destructive"
         }
       ]
