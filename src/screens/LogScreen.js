@@ -442,6 +442,7 @@ const LogScreen = ({ navigation, route }) => {
     const [waterIntake, setWaterIntake] = useState(0);
     const [waterGoal, setWaterGoal] = useState(64); // Default to 64 oz (8 cups)
     const [exerciseSummary, setExerciseSummary] = useState('');
+    const [caloriesConsumed, setCaloriesConsumed] = useState(0);
     const waterUnit = 'oz';
     const WATER_INCREMENT = 8; // 8 oz increment
     const [selectedMeal, setSelectedMeal] = useState(null);
@@ -513,6 +514,20 @@ const LogScreen = ({ navigation, route }) => {
                         setWaterIntake(summaryData?.water_intake || 0);
                         setExerciseSummary(summaryData?.exercise_summary || '');
                     }
+
+                    // Fetch daily food log for total calories
+                    const { data: logData, error: logError } = await supabase
+                        .from('daily_food_logs')
+                        .select('total_protein_calories')
+                        .eq('user_id', userId)
+                        .eq('date', dateString)
+                        .single();
+
+                    if (logError && logError.code !== 'PGRST116') {
+                        console.error('Error fetching daily log:', logError);
+                    } else {
+                        setCaloriesConsumed(logData?.total_protein_calories || 0);
+                    }
                 } catch (error) {
                     console.error('Error:', error);
                 } finally {
@@ -556,6 +571,7 @@ const LogScreen = ({ navigation, route }) => {
         setMeals([]);
         setWaterIntake(0);
         setExerciseSummary('');
+        setCaloriesConsumed(0);
         // Fetch data for the new date will happen via useEffect
     };
 
@@ -582,15 +598,18 @@ const LogScreen = ({ navigation, route }) => {
 
     const handleDeleteMeal = async (mealId) => {
         try {
-            const { error } = await supabase
+            const dateString = selectedDate.toISOString().split('T')[0];
+
+            // Delete the meal
+            const { error: deleteError } = await supabase
                 .from('meals')
                 .delete()
                 .eq('id', mealId);
 
-            if (error) throw error;
+            if (deleteError) throw deleteError;
 
             // Refresh data
-            fetchData();
+            await fetchData();
         } catch (error) {
             console.error('Error deleting meal:', error);
             Alert.alert('Error', 'Failed to delete meal');
@@ -689,7 +708,7 @@ const LogScreen = ({ navigation, route }) => {
         if (!meals) return null;
         
         // Calculate progress percentages
-        const proteinProgress = Math.min((meals.total_protein_calories / meals.protein_calorie_allowance) * 100, 100);
+        const proteinProgress = Math.min((caloriesConsumed / 2000) * 100, 100);
         const vegetableProgress = Math.min((meals.vegetable_servings / meals.vegetable_servings_goal) * 100, 100);
         const fruitProgress = Math.min((meals.fruit_servings / meals.fruit_servings_goal) * 100, 100);
         
@@ -704,7 +723,7 @@ const LogScreen = ({ navigation, route }) => {
                             Protein Calories
                         </Text>
                         <Text style={[styles.progressValue, { color: theme.text }]}>
-                            {meals.total_protein_calories} / {meals.protein_calorie_allowance}
+                            {caloriesConsumed} / 2000
                         </Text>
                     </View>
                     <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
