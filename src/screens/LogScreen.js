@@ -492,6 +492,8 @@ const LogScreen = ({ navigation, route }) => {
     const [waterGoal, setWaterGoal] = useState(64); // Default to 64 oz (8 cups)
     const [exerciseSummary, setExerciseSummary] = useState('');
     const [caloriesConsumed, setCaloriesConsumed] = useState(0);
+    const [totalVegetableServings, setTotalVegetableServings] = useState(0);
+    const [totalFruitServings, setTotalFruitServings] = useState(0);
     const waterUnit = 'oz';
     const WATER_INCREMENT = 8; // 8 oz increment
     const [selectedMeal, setSelectedMeal] = useState(null);
@@ -500,6 +502,25 @@ const LogScreen = ({ navigation, route }) => {
     const [editingExerciseId, setEditingExerciseId] = useState(null);
     const { theme } = useTheme();
     const [userId, setUserId] = useState(null);
+
+    useEffect(() => {
+        const checkStructure = async () => {
+            // Debug: Check food_items table structure
+            const { data, error } = await supabase
+                .from('food_items')
+                .select('*')
+                .limit(1);
+            
+            if (data && data.length > 0) {
+                console.log('Food item structure:', data[0]);
+            }
+            if (error) {
+                console.error('Error checking structure:', error);
+            }
+        };
+        
+        checkStructure();
+    }, []);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -512,37 +533,34 @@ const LogScreen = ({ navigation, route }) => {
         fetchUser();
     }, []);
 
+    const getFoodType = (foodName) => {
+        const name = foodName.toLowerCase();
+        // List of common vegetables
+        const vegetables = ['broccoli', 'spinach', 'kale', 'carrot', 'lettuce', 'cucumber', 'tomato', 'celery', 'pepper', 'onion', 'garlic'];
+        // List of common fruits
+        const fruits = ['apple', 'banana', 'orange', 'grape', 'berry', 'strawberry', 'blueberry', 'pear', 'peach', 'plum', 'mango'];
+        // List of protein foods
+        const veryLeanProteins = ['egg white', 'fish', 'tuna', 'cod', 'tilapia'];
+        const leanProteins = ['chicken', 'turkey', 'lean beef'];
+        const mediumFatProteins = ['salmon', 'beef', 'pork'];
+        const proteinAlternatives = ['tofu', 'tempeh', 'seitan', 'beans', 'lentils'];
+
+        if (vegetables.some(veg => name.includes(veg))) return 'vegetable';
+        if (fruits.some(fruit => name.includes(fruit))) return 'fruit';
+        if (veryLeanProteins.some(protein => name.includes(protein))) return 'very_lean_protein';
+        if (leanProteins.some(protein => name.includes(protein))) return 'lean_protein';
+        if (mediumFatProteins.some(protein => name.includes(protein))) return 'medium_fat_protein';
+        if (proteinAlternatives.some(protein => name.includes(protein))) return 'protein_alternative';
+        
+        return 'other';
+    };
+
     const fetchData = async () => {
         if (!userId) return;
         
         try {
             const dateString = selectedDate.toISOString().split('T')[0];
             
-            // Fetch daily summary
-            const { data: summaryData, error: summaryError } = await supabase
-                .from('daily_summaries')
-                .select('*')
-                .eq('user_id', userId)
-                .eq('date', dateString)
-                .single();
-
-            if (summaryError && summaryError.code !== 'PGRST116') {
-                console.error('Error fetching daily summary:', summaryError);
-                return;
-            }
-
-            // Update water intake
-            if (summaryData?.water_intake !== undefined) {
-                setWaterIntake(summaryData.water_intake);
-            }
-
-            // Update exercise summary
-            if (summaryData?.exercise_summary) {
-                setExerciseSummary(summaryData.exercise_summary);
-            } else {
-                setExerciseSummary('');
-            }
-
             // Fetch meals
             const { data: mealsData, error: mealsError } = await supabase
                 .from('meals')
@@ -564,16 +582,49 @@ const LogScreen = ({ navigation, route }) => {
                 return;
             }
 
-            // Transform the meals data to match the expected format
+            // Calculate vegetable and fruit servings
+            let totalVegetableServings = 0;
+            let totalFruitServings = 0;
+            let totalProteinCalories = 0;
+
+            mealsData?.forEach(meal => {
+                meal.food_items?.forEach(item => {
+                    const foodType = getFoodType(item.name);
+                    
+                    if (foodType === 'vegetable') {
+                        totalVegetableServings += item.servings;
+                    } else if (foodType === 'fruit') {
+                        totalFruitServings += item.servings;
+                    }
+                    
+                    // Calculate protein calories based on type
+                    switch (foodType) {
+                        case 'very_lean_protein':
+                            totalProteinCalories += (item.servings * 35);
+                            break;
+                        case 'lean_protein':
+                            totalProteinCalories += (item.servings * 55);
+                            break;
+                        case 'medium_fat_protein':
+                            totalProteinCalories += (item.servings * 75);
+                            break;
+                        case 'protein_alternative':
+                            totalProteinCalories += (item.servings * 45);
+                            break;
+                    }
+                });
+            });
+
+            // Transform meals data
             const transformedMeals = mealsData?.map(meal => ({
-                id: meal.id,
-                type: meal.type,
-                time: meal.time,
+                ...meal,
                 foodItems: meal.food_items || []
             })) || [];
 
             setMeals(transformedMeals);
-
+            setTotalVegetableServings(totalVegetableServings);
+            setTotalFruitServings(totalFruitServings);
+            setCaloriesConsumed(totalProteinCalories);
         } catch (error) {
             console.error('Error fetching data:', error);
             Alert.alert('Error', 'Failed to fetch data');
@@ -695,6 +746,8 @@ const LogScreen = ({ navigation, route }) => {
         setWaterIntake(0);
         setExerciseSummary('');
         setCaloriesConsumed(0);
+        setTotalVegetableServings(0);
+        setTotalFruitServings(0);
         // Fetch data for the new date will happen via useEffect
     };
 
@@ -860,12 +913,12 @@ const LogScreen = ({ navigation, route }) => {
     };
 
     const renderSummary = () => {
-        if (!meals) return null;
+        if (!meals || meals.length === 0) return null;
         
         // Calculate progress percentages
         const proteinProgress = Math.min((caloriesConsumed / 2000) * 100, 100);
-        const vegetableProgress = Math.min((meals.vegetable_servings / meals.vegetable_servings_goal) * 100, 100);
-        const fruitProgress = Math.min((meals.fruit_servings / meals.fruit_servings_goal) * 100, 100);
+        const vegetableProgress = Math.min((totalVegetableServings / 2) * 100, 100);
+        const fruitProgress = Math.min((totalFruitServings / 1) * 100, 100);
         
         return (
             <View style={[styles.summarySection, { backgroundColor: theme.cardBackground }]}>
@@ -901,7 +954,7 @@ const LogScreen = ({ navigation, route }) => {
                             Vegetable Servings
                         </Text>
                         <Text style={[styles.progressValue, { color: theme.text }]}>
-                            {meals.vegetable_servings} / {meals.vegetable_servings_goal}
+                            {totalVegetableServings} / 2
                         </Text>
                     </View>
                     <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
@@ -924,7 +977,7 @@ const LogScreen = ({ navigation, route }) => {
                             Fruit Servings
                         </Text>
                         <Text style={[styles.progressValue, { color: theme.text }]}>
-                            {meals.fruit_servings} / {meals.fruit_servings_goal}
+                            {totalFruitServings} / 1
                         </Text>
                     </View>
                     <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
