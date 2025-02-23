@@ -37,6 +37,11 @@ const DashboardScreen = ({ navigation }) => {
   const [isExerciseModalVisible, setIsExerciseModalVisible] = useState(false);
   const [editingExerciseId, setEditingExerciseId] = useState(null);
   const [lastWaterFetchDate, setLastWaterFetchDate] = useState(null);
+  const [isEditMealModalVisible, setIsEditMealModalVisible] = useState(false);
+  const [editingMeal, setEditingMeal] = useState(null);
+  const [mealType, setMealType] = useState('');
+  const [mealTime, setMealTime] = useState('');
+  const [selectedFoods, setSelectedFoods] = useState([]);
 
   const waterUnit = 'oz';
 
@@ -113,10 +118,19 @@ const DashboardScreen = ({ navigation }) => {
         setExerciseSummary('');
       }
 
-      // Fetch meals
+      // Fetch meals with their food items using a join
       const { data: mealsData, error: mealsError } = await supabase
         .from('meals')
-        .select('*')
+        .select(`
+          id,
+          type,
+          time,
+          food_items!meal_id (
+            id,
+            name,
+            servings
+          )
+        `)
         .eq('user_id', userId)
         .eq('date', today);
 
@@ -125,7 +139,15 @@ const DashboardScreen = ({ navigation }) => {
         return;
       }
 
-      setMeals(mealsData || []);
+      // Transform the meals data to match the expected format
+      const transformedMeals = mealsData?.map(meal => ({
+        id: meal.id,
+        type: meal.type,
+        time: meal.time,
+        foodItems: meal.food_items || []
+      })) || [];
+
+      setMeals(transformedMeals);
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -206,34 +228,34 @@ const DashboardScreen = ({ navigation }) => {
             setCaloriesConsumed(logData.total_protein_calories || 0);
           }
 
-          // Fetch meals with their food items
+          // Fetch meals with their food items using a join
           const { data: mealsData, error: mealsError } = await supabase
             .from('meals')
             .select(`
               id,
               type,
               time,
-              food_items (
+              food_items!meal_id (
                 id,
                 name,
                 servings
               )
             `)
             .eq('user_id', userId)
-            .eq('date', today)
-            .order('time', { ascending: true });
+            .eq('date', today);
 
           if (mealsError) {
             console.error('Error fetching meals:', mealsError);
           } else {
-            const processedMeals = mealsData?.map(meal => ({
+            // Transform the meals data to match the expected format
+            const transformedMeals = mealsData?.map(meal => ({
               id: meal.id,
-              type: meal.type || 'Meal',
+              type: meal.type,
               time: meal.time,
               foodItems: meal.food_items || []
             })) || [];
             
-            setMeals(processedMeals);
+            setMeals(transformedMeals);
           }
 
         } catch (error) {
@@ -433,8 +455,14 @@ const DashboardScreen = ({ navigation }) => {
   };
 
   const handleEditMeal = (meal) => {
-    // Navigate to edit meal screen with meal data
-    navigation.navigate('AddFood', { meal });
+    // Navigate to AddFood screen with properly formatted meal data
+    navigation.navigate('AddFood', { 
+      editMode: true,
+      mealId: meal.id,
+      mealType: meal.type || '',
+      mealTime: meal.time || '',
+      foodItems: Array.isArray(meal.foodItems) ? meal.foodItems : []
+    });
   };
 
   const handleDeleteMeal = async (mealId) => {
@@ -520,6 +548,44 @@ const DashboardScreen = ({ navigation }) => {
     }
   };
 
+  const handleUpdateMeal = async () => {
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      
+      const { error } = await supabase
+        .from('meals')
+        .update({
+          type: mealType,
+          time: mealTime,
+          food_items: selectedFoods
+        })
+        .eq('id', editingMeal.id);
+
+      if (error) {
+        console.error('Error updating meal:', error);
+        Alert.alert('Error', 'Failed to update meal');
+        return;
+      }
+
+      // Clear state and close modal
+      setEditingMeal(null);
+      setMealType('');
+      setMealTime('');
+      setSelectedFoods([]);
+      setIsEditMealModalVisible(false);
+
+      // Refresh data
+      fetchData();
+    } catch (error) {
+      console.error('Error updating meal:', error);
+      Alert.alert('Error', 'Failed to update meal');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const renderExerciseModal = () => (
     <Modal
       visible={isExerciseModalVisible}
@@ -586,9 +652,88 @@ const DashboardScreen = ({ navigation }) => {
     </Modal>
   );
 
+  const renderEditMealModal = () => {
+    if (!editingMeal) return null;
+
+    return (
+      <Modal
+        visible={isEditMealModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsEditMealModalVisible(false)}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Meal</Text>
+              <TouchableOpacity onPress={() => setIsEditMealModalVisible(false)}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Meal Type */}
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Meal Type</Text>
+            <TextInput
+              style={[styles.input, { color: theme.text, borderColor: theme.border }]}
+              value={mealType}
+              onChangeText={setMealType}
+              placeholder="Enter meal type"
+              placeholderTextColor={theme.textSecondary}
+            />
+
+            {/* Meal Time */}
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Time</Text>
+            <TextInput
+              style={[styles.input, { color: theme.text, borderColor: theme.border }]}
+              value={mealTime}
+              onChangeText={setMealTime}
+              placeholder="Enter meal time"
+              placeholderTextColor={theme.textSecondary}
+            />
+
+            {/* Food Items */}
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Food Items</Text>
+            {selectedFoods.map((food, index) => (
+              <View key={index} style={styles.foodItemContainer}>
+                <Text style={[styles.foodItemText, { color: theme.text }]}>
+                  {food.name} - {food.servings} serving(s)
+                </Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    const newFoods = [...selectedFoods];
+                    newFoods.splice(index, 1);
+                    setSelectedFoods(newFoods);
+                  }}
+                >
+                  <Ionicons name="close-circle" size={24} color={theme.danger} />
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            {/* Save Button */}
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                { backgroundColor: theme.importantButton },
+                isSubmitting && styles.saveButtonDisabled
+              ]}
+              onPress={handleUpdateMeal}
+              disabled={isSubmitting}
+            >
+              <Text style={[styles.saveButtonText, { color: theme.importantButtonText }]}>
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       {renderExerciseModal()}
+      {renderEditMealModal()}
       <View style={{ flex: 1 }}>
         <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
           {/* Header with Profile and Welcome */}
@@ -1064,18 +1209,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   modalContent: {
     width: '90%',
-    borderRadius: 15,
+    borderRadius: 10,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1104,9 +1247,32 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  inputLabel: {
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+  },
+  foodItemContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  foodItemText: {
+    fontSize: 16,
+    flex: 1,
   },
 });
 

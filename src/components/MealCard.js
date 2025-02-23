@@ -7,7 +7,10 @@ import { Ionicons } from '@expo/vector-icons';
 const MealCard = ({ meal, onEdit, onDelete }) => {
   const { theme } = useTheme();
 
-  if (!meal || !meal.foodItems) return null;
+  if (!meal) return null;
+
+  // Ensure foodItems is always an array
+  const foodItems = meal.foodItems || [];
 
   // Format time string
   const formatTime = (timeString) => {
@@ -73,7 +76,7 @@ const MealCard = ({ meal, onEdit, onDelete }) => {
         <Text style={[styles.mealTitle, { color: theme.text }]}>
           {meal.type || 'Meal'} {meal.time ? `- ${formatTime(meal.time)}` : ''}
         </Text>
-        {meal.foodItems.map((item) => (
+        {foodItems.map((item) => (
           <View key={item.id} style={[styles.foodItem, { backgroundColor: theme.cardBackground }]}>
             <View style={[styles.foodNameContainer, { backgroundColor: theme.cardBackground }]}>
               <Text style={[styles.foodName, { color: theme.text }]}>{item.name}</Text>

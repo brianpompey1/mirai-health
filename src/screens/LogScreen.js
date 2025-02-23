@@ -546,7 +546,16 @@ const LogScreen = ({ navigation, route }) => {
             // Fetch meals
             const { data: mealsData, error: mealsError } = await supabase
                 .from('meals')
-                .select('*')
+                .select(`
+                    id,
+                    type,
+                    time,
+                    food_items!meal_id (
+                        id,
+                        name,
+                        servings
+                    )
+                `)
                 .eq('user_id', userId)
                 .eq('date', dateString);
 
@@ -555,7 +564,15 @@ const LogScreen = ({ navigation, route }) => {
                 return;
             }
 
-            setMeals(mealsData || []);
+            // Transform the meals data to match the expected format
+            const transformedMeals = mealsData?.map(meal => ({
+                id: meal.id,
+                type: meal.type,
+                time: meal.time,
+                foodItems: meal.food_items || []
+            })) || [];
+
+            setMeals(transformedMeals);
 
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -698,26 +715,46 @@ const LogScreen = ({ navigation, route }) => {
     };
 
     const handleEditMeal = (meal) => {
-        // Navigate to edit meal screen with meal data
-        navigation.navigate('AddFood', { meal });
+        navigation.navigate('AddFood', {
+            editMode: true,
+            mealId: meal.id,
+            mealType: meal.type || '',
+            mealTime: meal.time || '',
+            foodItems: Array.isArray(meal.foodItems) ? meal.foodItems : []
+        });
     };
 
     const handleDeleteMeal = async (mealId) => {
         try {
-            const dateString = selectedDate.toISOString().split('T')[0];
+            // First delete associated food items
+            const { error: deleteItemsError } = await supabase
+                .from('food_items')
+                .delete()
+                .eq('meal_id', mealId);
 
-            // Delete the meal
-            const { error: deleteError } = await supabase
+            if (deleteItemsError) {
+                console.error('Error deleting food items:', deleteItemsError);
+                Alert.alert('Error', 'Failed to delete meal items');
+                return;
+            }
+
+            // Then delete the meal
+            const { error: deleteMealError } = await supabase
                 .from('meals')
                 .delete()
                 .eq('id', mealId);
 
-            if (deleteError) throw deleteError;
+            if (deleteMealError) {
+                console.error('Error deleting meal:', deleteMealError);
+                Alert.alert('Error', 'Failed to delete meal');
+                return;
+            }
 
-            // Refresh data
-            await fetchData();
+            // Update the local state to remove the deleted meal
+            setMeals(meals.filter(meal => meal.id !== mealId));
+            Alert.alert('Success', 'Meal deleted successfully');
         } catch (error) {
-            console.error('Error deleting meal:', error);
+            console.error('Error in handleDeleteMeal:', error);
             Alert.alert('Error', 'Failed to delete meal');
         }
     };
@@ -815,6 +852,8 @@ const LogScreen = ({ navigation, route }) => {
                     ...meal,
                     food_items: meal.foodItems
                 }}
+                onEdit={handleEditMeal}
+                onDelete={handleDeleteMeal}
                 theme={theme}
             />
         );
