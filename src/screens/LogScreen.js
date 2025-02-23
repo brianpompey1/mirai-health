@@ -7,6 +7,7 @@ import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useTheme } from '../contexts/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 const styles = StyleSheet.create({
     safeArea: {
@@ -221,122 +222,229 @@ const styles = StyleSheet.create({
     progressFill: {
         height: '100%',
         borderRadius: 4,
-    }
+    },
+    waterContainer: {
+        alignItems: 'center',
+        width: '100%',
+    },
+    waterText: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    waterProgressContainer: {
+        width: '100%',
+        alignItems: 'center',
+    },
+    waterProgressBackground: {
+        width: '100%',
+        height: 12,
+        backgroundColor: '#E6F3FF',
+        borderRadius: 6,
+        overflow: 'hidden',
+    },
+    waterProgressFill: {
+        height: '100%',
+        backgroundColor: '#2196F3',
+        borderRadius: 6,
+    },
+    waterRemainingText: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 8,
+        textAlign: 'center',
+    },
+    waterControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    waterButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#2196F3',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginHorizontal: 4,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    waterButtonText: {
+        color: 'white',
+        fontSize: 24,
+        fontWeight: '500',
+        lineHeight: 24,
+        textAlign: 'center',
+    },
+    dateNavigation: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        marginHorizontal: 16,
+        marginTop: 16,
+        marginBottom: 8,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    dateButton: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 20,
+    },
+    dateButtonDisabled: {
+        opacity: 0.5,
+    },
+    dateButtonText: {
+        fontSize: 24,
+        fontWeight: '500',
+    },
+    dateTouchable: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 8,
+        borderRadius: 8,
+    },
+    calendarIcon: {
+        marginLeft: 4,
+    },
 });
 
 const LogScreen = ({ navigation, route }) => {
-    const [selectedDate, setSelectedDate] = useState(() => {
-        const now = new Date();
-        now.setHours(0, 0, 0, 0); // Set time to midnight
-        return now;
-    });
+    const [selectedDate, setSelectedDate] = useState(new Date());
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
     const [logData, setLogData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [waterIntake, setWaterIntake] = useState(0); // Store in ml internally
+    const [waterIntake, setWaterIntake] = useState(0);
     const [waterGoal, setWaterGoal] = useState(64); // Default to 64 oz (8 cups)
-    const [waterUnit, setWaterUnit] = useState('oz'); // Default to oz
+    const waterUnit = 'oz';
+    const WATER_INCREMENT = 8; // 8 oz increment
     const [selectedMeal, setSelectedMeal] = useState(null);
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     const { theme } = useTheme();
+    const [userId, setUserId] = useState(null);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                setUserId(user.id);
+            }
+        };
+        
+        fetchUser();
+    }, []);
 
     const fetchLogData = async () => {
+        if (!userId) return; // Don't fetch if we don't have a userId yet
+
         try {
             setIsLoading(true);
 
-            // Get current user
-            const { data: { user }, error: authError } = await supabase.auth.getUser();
-            if (!user) return;
+            const dateString = selectedDate.toISOString().split('T')[0];
 
-            try {
-                const dateString = selectedDate.toISOString().split('T')[0];
+            // Fetch user's protein calorie target
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('daily_protein_calorie_target')
+                .eq('id', userId)
+                .single();
 
-                // Fetch user's protein calorie target
-                const { data: userData, error: userError } = await supabase
-                    .from('users')
-                    .select('daily_protein_calorie_target')
-                    .eq('id', user.id)
-                    .single();
-
-                if (userError) {
-                    console.error('Error fetching user data:', userError);
-                    return;
-                }
-
-                // Fetch daily food log
-                const { data: logData, error: logError } = await supabase
-                    .from('daily_food_logs')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .eq('date', dateString)
-                    .single();
-
-                if (logError && logError.code !== 'PGRST116') {
-                    console.error('Error fetching daily log:', logError);
-                    return;
-                }
-
-                // Fetch daily summary for water and exercise
-                const { data: summaryData, error: summaryError } = await supabase
-                    .from('daily_summaries')
-                    .select('water_intake, exercise_summary')
-                    .eq('user_id', user.id)
-                    .eq('date', dateString)
-                    .single();
-
-                if (summaryError && summaryError.code !== 'PGRST116') {
-                    console.error('Error fetching daily summary:', summaryError);
-                }
-
-                // Fetch meals with their associated food items
-                const { data: meals, error: mealsError } = await supabase
-                    .from('meals')
-                    .select(`
-                        id,
-                        type,
-                        time,
-                        food_items (
-                            id,
-                            name,
-                            servings
-                        )
-                    `)
-                    .eq('user_id', user.id)
-                    .eq('date', dateString)
-                    .order('time', { ascending: true });
-
-                if (mealsError) {
-                    console.error('Error fetching meals:', mealsError);
-                    return;
-                }
-
-                // Initialize log with default values if it doesn't exist
-                const log = logData || {
-                    id: null,
-                    user_id: user.id,
-                    date: dateString,
-                    total_protein_calories: 0,
-                    vegetable_servings: 0,
-                    fruit_servings: 0
-                };
-
-                // Add water, exercise data, and goals
-                setLogData({ 
-                    ...log, 
-                    meals: meals || [],
-                    water_intake: summaryData?.water_intake || 0,
-                    exercise_summary: summaryData?.exercise_summary || '',
-                    protein_calorie_allowance: userData?.daily_protein_calorie_target || 2000,
-                    vegetable_servings_goal: 2,  // Fixed value per diet plan specs
-                    fruit_servings_goal: 1       // Fixed value per diet plan specs
-                });
-
-            } catch (error) {
-                console.error('Error in fetchLogData:', error);
-            } finally {
-                setIsLoading(false);
+            if (userError) {
+                console.error('Error fetching user data:', userError);
+                return;
             }
+
+            // Fetch daily summary for water and exercise
+            const { data: summaryData, error: summaryError } = await supabase
+                .from('daily_summaries')
+                .select('water_intake, exercise_summary')
+                .eq('user_id', userId)
+                .eq('date', dateString)
+                .single();
+
+            if (summaryError && summaryError.code !== 'PGRST116') {
+                console.error('Error fetching summary data:', summaryError);
+            }
+
+            // Set water intake from summary data if it exists
+            if (summaryData) {
+                setWaterIntake(summaryData.water_intake || 0);
+            }
+
+            // Fetch daily food log
+            const { data: logData, error: logError } = await supabase
+                .from('daily_food_logs')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('date', dateString)
+                .single();
+
+            if (logError && logError.code !== 'PGRST116') {
+                console.error('Error fetching daily log:', logError);
+                return;
+            }
+
+            // Fetch meals with their associated food items
+            const { data: meals, error: mealsError } = await supabase
+                .from('meals')
+                .select(`
+                    id,
+                    type,
+                    time,
+                    food_items (
+                        id,
+                        name,
+                        servings
+                    )
+                `)
+                .eq('user_id', userId)
+                .eq('date', dateString)
+                .order('time', { ascending: true });
+
+            if (mealsError) {
+                console.error('Error fetching meals:', mealsError);
+                return;
+            }
+
+            // Initialize log with default values if it doesn't exist
+            const log = logData || {
+                id: null,
+                user_id: userId,
+                date: dateString,
+                total_protein_calories: 0,
+                vegetable_servings: 0,
+                fruit_servings: 0
+            };
+
+            // Add water, exercise data, and goals
+            setLogData({ 
+                ...log, 
+                meals: meals || [],
+                water_intake: summaryData?.water_intake || 0,
+                exercise_summary: summaryData?.exercise_summary || '',
+                protein_calorie_allowance: userData?.daily_protein_calorie_target || 2000,
+                vegetable_servings_goal: 2,  // Fixed value per diet plan specs
+                fruit_servings_goal: 1       // Fixed value per diet plan specs
+            });
+
         } catch (error) {
             console.error('Error in fetchLogData:', error);
         } finally {
@@ -345,11 +453,11 @@ const LogScreen = ({ navigation, route }) => {
     };
 
     // Update data when screen is focused
-    useFocusEffect(
-        useCallback(() => {
+    useEffect(() => {
+        if (userId) {
             fetchLogData();
-        }, [selectedDate])
-    );
+        }
+    }, [userId, selectedDate]);
 
     // Also fetch when route.params.refresh changes
     useEffect(() => {
@@ -369,10 +477,15 @@ const LogScreen = ({ navigation, route }) => {
     };
 
     const handleConfirm = (date) => {
-        // Create date from the selected date string (YYYY-MM-DD)
-        const [year, month, day] = date.dateString.split('-').map(Number);
-        const selectedDate = new Date(year, month - 1, day); // month is 0-based
-        setSelectedDate(selectedDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Don't allow future dates
+        if (date > today) {
+            date = today;
+        }
+        
+        handleDateChange(date);
         hideDatePicker();
     };
 
@@ -381,10 +494,28 @@ const LogScreen = ({ navigation, route }) => {
         return date.toLocaleDateString('en-US', options);
     };
 
-    const handleDateChange = (days) => {
+    const handleDateChange = (date) => {
+        setSelectedDate(date);
+        // Reset states for the new date
+        setLogData(null);
+        setWaterIntake(0);
+        // Fetch data for the new date will happen via useEffect
+    };
+
+    const handlePreviousDay = () => {
         const newDate = new Date(selectedDate);
-        newDate.setDate(selectedDate.getDate() + days);
-        setSelectedDate(newDate);
+        newDate.setDate(selectedDate.getDate() - 1);
+        handleDateChange(newDate);
+    };
+
+    const handleNextDay = () => {
+        const newDate = new Date(selectedDate);
+        newDate.setDate(selectedDate.getDate() + 1);
+        const today = new Date();
+        // Don't allow selecting future dates
+        if (newDate <= today) {
+            handleDateChange(newDate);
+        }
     };
 
     const handleEditMeal = (foodItem) => {
@@ -444,8 +575,91 @@ const LogScreen = ({ navigation, route }) => {
         }
     }, [fetchLogData]);
 
-    const ozToMl = (oz) => oz * 29.5735;
-    const mlToOz = (ml) => ml / 29.5735;
+    const handleAddWater = async () => {
+        if (isSubmitting || !userId) return;
+        
+        try {
+            setIsSubmitting(true);
+            const newWaterIntake = waterIntake + WATER_INCREMENT;
+            setWaterIntake(newWaterIntake);
+            
+            const today = new Date().toISOString().split('T')[0];
+            const { data: existingData, error: fetchError } = await supabase
+                .from('daily_summaries')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('date', today)
+                .single();
+
+            if (fetchError && fetchError.code !== 'PGRST116') {
+                console.error('Error fetching daily summary:', fetchError);
+                setWaterIntake(waterIntake);
+                return;
+            }
+
+            const { error } = await supabase
+                .from('daily_summaries')
+                .upsert({
+                    ...(existingData?.id ? { id: existingData.id } : {}),
+                    user_id: userId,
+                    date: today,
+                    water_intake: newWaterIntake
+                });
+
+            if (error) {
+                console.error('Error updating water intake:', error);
+                setWaterIntake(waterIntake);
+            }
+        } catch (error) {
+            console.error('Error updating water intake:', error);
+            setWaterIntake(waterIntake);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleRemoveWater = async () => {
+        if (isSubmitting || !userId) return;
+        
+        try {
+            setIsSubmitting(true);
+            const newWaterIntake = Math.max(0, waterIntake - WATER_INCREMENT);
+            setWaterIntake(newWaterIntake);
+            
+            const today = new Date().toISOString().split('T')[0];
+            const { data: existingData, error: fetchError } = await supabase
+                .from('daily_summaries')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('date', today)
+                .single();
+
+            if (fetchError && fetchError.code !== 'PGRST116') {
+                console.error('Error fetching daily summary:', fetchError);
+                setWaterIntake(waterIntake);
+                return;
+            }
+
+            const { error } = await supabase
+                .from('daily_summaries')
+                .upsert({
+                    ...(existingData?.id ? { id: existingData.id } : {}),
+                    user_id: userId,
+                    date: today,
+                    water_intake: newWaterIntake
+                });
+
+            if (error) {
+                console.error('Error updating water intake:', error);
+                setWaterIntake(waterIntake);
+            }
+        } catch (error) {
+            console.error('Error updating water intake:', error);
+            setWaterIntake(waterIntake);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     const renderRightActions = (meal, dragX) => {
         const scale = dragX.interpolate({
@@ -602,14 +816,38 @@ const LogScreen = ({ navigation, route }) => {
                 </View>
 
                 {/* Water Intake */}
-                <View style={styles.progressContainer}>
-                    <View style={styles.progressLabelContainer}>
-                        <Text style={[styles.progressLabel, { color: theme.text }]}>
-                            Water Intake
+                <View style={styles.waterContainer}>
+                    <Text style={[styles.waterText, { color: theme.text }]}>
+                        {waterIntake} / {waterGoal} {waterUnit}
+                    </Text>
+                    <View style={styles.waterProgressContainer}>
+                        <View style={styles.waterProgressBackground}>
+                            <View
+                                style={[
+                                    styles.waterProgressFill,
+                                    {
+                                        width: `${Math.min((waterIntake / waterGoal) * 100, 100)}%`,
+                                    }
+                                ]}
+                            />
+                        </View>
+                        <Text style={styles.waterRemainingText}>
+                            {Math.max(waterGoal - waterIntake, 0)} {waterUnit} remaining
                         </Text>
-                        <Text style={[styles.progressValue, { color: theme.text }]}>
-                            {logData.water_intake} glasses
-                        </Text>
+                    </View>
+                    <View style={styles.waterControls}>
+                        <TouchableOpacity
+                            style={styles.waterButton}
+                            onPress={handleRemoveWater}
+                        >
+                            <Text style={styles.waterButtonText}>−</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.waterButton}
+                            onPress={handleAddWater}
+                        >
+                            <Text style={styles.waterButtonText}>+</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -636,43 +874,80 @@ const LogScreen = ({ navigation, route }) => {
 
     return (
         <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-            <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-                <View style={[styles.header, { backgroundColor: theme.cardBackground }]}>
+            <View style={styles.container}>
+                {/* Date Navigation */}
+                <View style={[styles.dateNavigation, { backgroundColor: theme.cardBackground }]}>
                     <TouchableOpacity 
-                        style={[styles.dateButton, { backgroundColor: theme.cardBackground }]}
-                        onPress={() => setDatePickerVisibility(true)}
+                        onPress={handlePreviousDay}
+                        style={styles.dateButton}
+                    >
+                        <Text style={[styles.dateButtonText, { color: theme.text }]}>←</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        onPress={showDatePicker}
+                        style={styles.dateTouchable}
                     >
                         <Text style={[styles.dateText, { color: theme.text }]}>
                             {selectedDate.toLocaleDateString('en-US', {
                                 weekday: 'long',
-                                year: 'numeric',
                                 month: 'long',
                                 day: 'numeric'
                             })}
                         </Text>
-                        <Ionicons name="calendar" size={24} color={theme.text} />
+                        <Ionicons 
+                            name="calendar" 
+                            size={20} 
+                            color={theme.text} 
+                            style={styles.calendarIcon}
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        onPress={handleNextDay}
+                        style={[
+                            styles.dateButton,
+                            selectedDate.toDateString() === new Date().toDateString() && styles.dateButtonDisabled
+                        ]}
+                        disabled={selectedDate.toDateString() === new Date().toDateString()}
+                    >
+                        <Text style={[
+                            styles.dateButtonText,
+                            { color: selectedDate.toDateString() === new Date().toDateString() ? theme.border : theme.text }
+                        ]}>→</Text>
                     </TouchableOpacity>
                 </View>
 
-                {renderSummary()}
+                {/* Date Picker Modal */}
+                <DateTimePickerModal
+                    isVisible={isDatePickerVisible}
+                    mode="date"
+                    onConfirm={handleConfirm}
+                    onCancel={hideDatePicker}
+                    date={selectedDate}
+                    maximumDate={new Date()}
+                    textColor={theme.text}
+                />
 
-                <View style={[styles.mealsContainer, { backgroundColor: theme.cardBackground }]}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Meals</Text>
-                    {logData?.meals && logData.meals.length > 0 ? (
-                        logData.meals.map(meal => renderMealItem(meal))
-                    ) : (
-                        <View style={[styles.emptyState, { backgroundColor: theme.cardBackground }]}>
-                            <Text style={[styles.emptyStateText, { color: theme.text }]}>No meals logged for this day</Text>
-                            <TouchableOpacity 
-                                style={styles.addMealButton}
-                                onPress={() => navigation.navigate('AddFood')}
-                            >
-                                <Text style={styles.addMealButtonText}>Add Meal</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                </View>
-            </ScrollView>
+                <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+                    {renderSummary()}
+
+                    <View style={[styles.mealsContainer, { backgroundColor: theme.cardBackground }]}>
+                        <Text style={[styles.sectionTitle, { color: theme.text }]}>Meals</Text>
+                        {logData?.meals && logData.meals.length > 0 ? (
+                            logData.meals.map(meal => renderMealItem(meal))
+                        ) : (
+                            <View style={[styles.emptyState, { backgroundColor: theme.cardBackground }]}>
+                                <Text style={[styles.emptyStateText, { color: theme.text }]}>No meals logged for this day</Text>
+                                <TouchableOpacity 
+                                    style={styles.addMealButton}
+                                    onPress={() => navigation.navigate('AddFood')}
+                                >
+                                    <Text style={styles.addMealButtonText}>Add Meal</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </View>
+                </ScrollView>
+            </View>
         </SafeAreaView>
     );
 };

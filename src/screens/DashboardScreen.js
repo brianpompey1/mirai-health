@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, Text, SafeAreaView, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, ScrollView, StyleSheet, Text, SafeAreaView, TouchableOpacity, Alert, TextInput, Image, ImageBackground } from 'react-native';
 import DashboardHeader from '../components/DashboardHeader';
 import MotivationCard from '../components/MotivationCard';
 import CalorieProgress from '../components/CalorieProgress';
@@ -20,8 +20,8 @@ const DashboardScreen = () => {
   const [quoteAuthor, setQuoteAuthor] = useState("Theodore Roosevelt");
   const [motivationalBackground, setMotivationalBackground] = useState('');
   const [caloriesConsumed, setCaloriesConsumed] = useState(0);
-  const [totalCalories, setTotalCalories] = useState(2004); // From image
-  const [waterIntake, setWaterIntake] = useState(0); // Store in ml internally
+  const [calorieGoal, setCalorieGoal] = useState(2004); // From image
+  const [waterIntake, setWaterIntake] = useState(0);
   const [waterGoal, setWaterGoal] = useState(64);  // Default to 64 oz (8 cups)
   const [protein, setProtein] = useState(0);
   const [carbs, setCarbs] = useState(0);
@@ -30,14 +30,14 @@ const DashboardScreen = () => {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false); // New state for submission
-  const [waterUnit, setWaterUnit] = useState('oz'); // Default to oz
   const [exercise, setExercise] = useState('');
   const [exerciseSummary, setExerciseSummary] = useState('');
   const [isAddActionModalVisible, setIsAddActionModalVisible] = useState(false);
 
-  // Conversion functions
-  const ozToMl = (oz) => oz * 29.5735;
-  const mlToOz = (ml) => ml / 29.5735;
+  const waterUnit = 'oz';
+
+  const displayWaterIntake = waterIntake;
+  const displayWaterGoal = waterGoal;
 
   useEffect(() => {
     const fetchUser = async() => {
@@ -77,6 +77,35 @@ const DashboardScreen = () => {
     }
     fetchUser();
   }, [])
+
+  useEffect(() => {
+    const fetchDailySummary = async () => {
+      if (!userId) return;
+
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase
+          .from('daily_summaries')
+          .select('water_intake')
+          .eq('user_id', userId)
+          .eq('date', today)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching daily summary:', error);
+          return;
+        }
+
+        if (data) {
+          setWaterIntake(data.water_intake || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching daily summary:', error);
+      }
+    };
+
+    fetchDailySummary();
+  }, [userId]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -151,10 +180,8 @@ const DashboardScreen = () => {
           // Set the totals from the daily log
           if (logData) {
             setCaloriesConsumed(logData.total_protein_calories || 0);
-            setProtein((logData.total_protein_calories || 0) / 4); // Assuming 4 calories per gram of protein
           } else {
             setCaloriesConsumed(0);
-            setProtein(0);
           }
 
           //Fetch water data.
@@ -210,40 +237,47 @@ const DashboardScreen = () => {
     }, [userId]) // Depend on userId
   );
 
+  const WATER_INCREMENT = 8; // 8 oz increment
+  
   const handleAddWater = async () => {
     if (isSubmitting) return;
     
     try {
       setIsSubmitting(true);
-      const newIntake = Math.round(waterIntake + ozToMl(8));
+      const newWaterIntake = waterIntake + WATER_INCREMENT;
+      setWaterIntake(newWaterIntake);
       
-      // First try to update existing record
-      const { data, error: updateError } = await supabase
+      // First check if there's an existing record for today
+      const today = new Date().toISOString().split('T')[0];
+      const { data: existingData, error: fetchError } = await supabase
         .from('daily_summaries')
-        .update({ water_intake: newIntake })
-        .match({ user_id: userId, date: new Date().toISOString().split('T')[0] });
+        .select('id')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .single();
 
-      if (updateError) {
-        // If update fails (no existing record), insert new record
-        const { error: insertError } = await supabase
-          .from('daily_summaries')
-          .insert({
-            user_id: userId,
-            date: new Date().toISOString().split('T')[0],
-            water_intake: newIntake
-          });
-
-        if (insertError) {
-          console.error('Error updating water intake:', insertError);
-          Alert.alert('Error', 'Failed to update water intake');
-          return;
-        }
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 means no rows returned
+        console.error('Error fetching daily summary:', fetchError);
+        setWaterIntake(waterIntake); // Rollback
+        return;
       }
 
-      setWaterIntake(newIntake);
+      const { error } = await supabase
+        .from('daily_summaries')
+        .upsert({
+          ...(existingData?.id ? { id: existingData.id } : {}),
+          user_id: userId,
+          date: today,
+          water_intake: newWaterIntake
+        });
+
+      if (error) {
+        console.error('Error updating water intake:', error);
+        setWaterIntake(waterIntake); // Rollback
+      }
     } catch (error) {
-      console.error('Unexpected error:', error);
-      Alert.alert('Error', 'An unexpected error occurred');
+      console.error('Error updating water intake:', error);
+      setWaterIntake(waterIntake); // Rollback
     } finally {
       setIsSubmitting(false);
     }
@@ -254,35 +288,40 @@ const DashboardScreen = () => {
     
     try {
       setIsSubmitting(true);
-      const newIntake = Math.round(Math.max(0, waterIntake - ozToMl(8)));
+      const newWaterIntake = Math.max(0, waterIntake - WATER_INCREMENT);
+      setWaterIntake(newWaterIntake);
       
-      // First try to update existing record
-      const { data, error: updateError } = await supabase
+      // First check if there's an existing record for today
+      const today = new Date().toISOString().split('T')[0];
+      const { data: existingData, error: fetchError } = await supabase
         .from('daily_summaries')
-        .update({ water_intake: newIntake })
-        .match({ user_id: userId, date: new Date().toISOString().split('T')[0] });
+        .select('id')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .single();
 
-      if (updateError) {
-        // If update fails (no existing record), insert new record
-        const { error: insertError } = await supabase
-          .from('daily_summaries')
-          .insert({
-            user_id: userId,
-            date: new Date().toISOString().split('T')[0],
-            water_intake: newIntake
-          });
-
-        if (insertError) {
-          console.error('Error updating water intake:', insertError);
-          Alert.alert('Error', 'Failed to update water intake');
-          return;
-        }
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 means no rows returned
+        console.error('Error fetching daily summary:', fetchError);
+        setWaterIntake(waterIntake); // Rollback
+        return;
       }
 
-      setWaterIntake(newIntake);
+      const { error } = await supabase
+        .from('daily_summaries')
+        .upsert({
+          ...(existingData?.id ? { id: existingData.id } : {}),
+          user_id: userId,
+          date: today,
+          water_intake: newWaterIntake
+        });
+
+      if (error) {
+        console.error('Error updating water intake:', error);
+        setWaterIntake(waterIntake); // Rollback
+      }
     } catch (error) {
-      console.error('Unexpected error:', error);
-      Alert.alert('Error', 'An unexpected error occurred');
+      console.error('Error updating water intake:', error);
+      setWaterIntake(waterIntake); // Rollback
     } finally {
       setIsSubmitting(false);
     }
@@ -342,9 +381,6 @@ const DashboardScreen = () => {
             user_id: userId,
             date: new Date().toISOString().split('T')[0],
             total_calories: caloriesConsumed,
-            total_protein: protein,
-            total_carbs: carbs,
-            total_fat: fat,
             water_intake: Math.round(waterIntake), // Round to nearest integer
           },
           { onConflict: 'user_id, date' }
@@ -366,103 +402,221 @@ const DashboardScreen = () => {
     }
   };
 
-  // Helper function to get displayed water intake, based on selected unit.
-  const displayWaterIntake = waterUnit === 'oz' ? mlToOz(waterIntake) : waterIntake;
-  const displayWaterGoal = waterUnit == 'oz' ? waterGoal: ozToMl(waterGoal); //Goal is in oz
-
   return (
     <SafeAreaView style={[styles.safeArea, {backgroundColor: theme.background}]}>
-      <ScrollView style={[styles.container, {backgroundColor: theme.background}]}>
-        <DashboardHeader userName={userName} profilePicture={profilePicture} />
-        <MotivationCard quote={motivationalQuote} author={quoteAuthor} backgroundImage={motivationalBackground} />
-
-        {/* Calories Card */}
-        <View style={[styles.card, {backgroundColor: theme.cardBackground}]}>
-          <Text style={[styles.cardTitle, {color: theme.text}]}>Calories</Text>
-          <CalorieProgress consumed={caloriesConsumed} total={totalCalories} />
-          <Text style={[styles.cardSubtitle, {color: theme.text}]}>{totalCalories - caloriesConsumed} Calories Remaining</Text>
+      <ScrollView style={styles.container}>
+        {/* Header with Profile and Welcome */}
+        <View style={[styles.header, { backgroundColor: theme.cardBackground }]}>
+          <View style={styles.profileSection}>
+            <View style={styles.profileImageContainer}>
+              {profilePicture ? (
+                <Image 
+                  source={{ uri: profilePicture }} 
+                  style={styles.profilePicture}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.profilePlaceholder, { backgroundColor: theme.primary }]}>
+                  <Text style={styles.profileInitial}>
+                    {userName ? userName[0].toUpperCase() : '?'}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.headerTextContainer}>
+              <View style={styles.welcomeContainer}>
+                <Text style={[styles.greetingText, { color: theme.text }]}>
+                  Welcome back
+                </Text>
+                <Text style={[styles.nameText, { color: theme.text }]}>
+                  {userName || 'there'}!
+                </Text>
+              </View>
+              <Text style={[styles.dateText, { color: theme.text }]}>
+                {new Date().toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {/* Water Intake Card */}
-        <View style={[styles.card, {backgroundColor: theme.cardBackground}]}>
-          <Text style={[styles.cardTitle, {color: theme.text}]}>Water Intake</Text>
-          <WaterIntake
-            intake={displayWaterIntake} // Display in selected unit
-            goal={displayWaterGoal}
-            onAddWater={handleAddWater}
-            onRemoveWater={handleRemoveWater}
-            unit={waterUnit} // Pass the unit down
-            onUnitChange={setWaterUnit} // Allow changing the unit
-          />
+        {/* Motivation Card */}
+        <MotivationCard
+          quote={motivationalQuote}
+          author={quoteAuthor}
+          backgroundImage={motivationalBackground}
+          theme={theme}
+        />
+
+        {/* Calories Progress */}
+        <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Protein Calories</Text>
+          <View style={styles.calorieContainer}>
+            <Text style={[styles.calorieText, { color: theme.text }]}>
+              {caloriesConsumed} / {calorieGoal}
+            </Text>
+            <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: `${Math.min((caloriesConsumed / calorieGoal) * 100, 100)}%`,
+                    backgroundColor: theme.primary
+                  }
+                ]}
+              />
+            </View>
+            <Text style={[styles.remainingText, { color: theme.text }]}>
+              {calorieGoal - caloriesConsumed} calories remaining
+            </Text>
+          </View>
         </View>
 
-        {/* Macronutrient Breakdown Card */}
-        <View style={[styles.card, {backgroundColor: theme.cardBackground}]}>
-          <Text style={[styles.cardTitle, {color: theme.text}]}>Macronutrients</Text>
-          <MacronutrientBreakdown protein={protein} carbs={carbs} fat={fat} />
-        </View>
+        {/* Macronutrient Breakdown
+        <MacronutrientBreakdown
+          protein={protein}
+          carbs={carbs}
+          fat={fat}
+          theme={theme}
+        /> */}
 
-        {/* Today's Foods (Meal Cards) */}
-        <View style={[styles.mealsContainer, {backgroundColor: theme.cardBackground}]}>
-          <Text style={[styles.mealsTitle, {color: theme.text}]}>Today's Foods</Text>
-          {meals.map((meal, index) => (
-            <MealCard key={index} meal={meal} />
-          ))}
-          {meals.length === 0 && (
-            <Text style={[styles.noContentText, {color: theme.text}]}>No meals logged today</Text>
+        {/* Today's Meals */}
+        <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Meals</Text>
+            <TouchableOpacity
+              style={[
+                styles.addButton,
+                {
+                  backgroundColor: theme.importantButton,
+                  borderColor: theme.border,
+                },
+              ]}
+              onPress={() => navigation.navigate('AddFood')}
+            >
+              <Text style={[styles.addButtonText, { color: theme.importantButtonText }]}>+ Add Meal</Text>
+            </TouchableOpacity>
+          </View>
+          {meals.length > 0 ? (
+            meals.map((meal, index) => (
+              <MealCard key={index} meal={meal} theme={theme} />
+            ))
+          ) : (
+            <Text style={[styles.noMealsText, { color: theme.text }]}>
+              No meals logged yet today
+            </Text>
           )}
         </View>
 
-        {/* Exercise Section */}
-        <View style={[styles.card, {backgroundColor: theme.cardBackground}]}>
-          <Text style={[styles.cardTitle, {color: theme.text}]}>Today's Exercise</Text>
-          <View style={[styles.exerciseInputContainer, {backgroundColor: theme.cardBackground}]}>
-            <TextInput
-              style={[styles.exerciseInput, {color: theme.text}]}
-              placeholder="What exercise did you do today?"
-              value={exercise}
-              onChangeText={setExercise}
-              multiline
-              numberOfLines={2}
-            />
-            <TouchableOpacity 
-              style={[
-                styles.addButton, 
-                {backgroundColor: theme.buttonBackground}, 
-                (!exercise.trim() || isSubmitting) && {backgroundColor: theme.disabledButtonBackground}
-              ]}
-              onPress={handleSaveExercise}
-              disabled={!exercise.trim() || isSubmitting}
-            >
-              <Text style={[styles.addButtonText, {color: theme.text}]}>Add</Text>
-            </TouchableOpacity>
+        {/* Water Intake */}
+        <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Water Intake</Text>
+            <View style={styles.waterControls}>
+              <TouchableOpacity
+                style={[
+                  styles.waterButton,
+                  {
+                    backgroundColor: theme.importantButton,
+                    borderColor: theme.border,
+                  },
+                ]}
+                onPress={handleRemoveWater}
+              >
+                <Text style={[styles.waterButtonText, { color: theme.importantButtonText }]}>−</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.waterButton,
+                  {
+                    backgroundColor: theme.importantButton,
+                    borderColor: theme.border,
+                  },
+                ]}
+                onPress={handleAddWater}
+              >
+                <Text style={[styles.waterButtonText, { color: theme.importantButtonText }]}>+</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           
-          {exerciseSummary ? (
-            <View style={styles.exerciseList}>
-              {exerciseSummary.split('\n').map((item, index) => (
-                <View key={index} style={styles.exerciseItem}>
-                  <Text style={[styles.exerciseText, {color: theme.text}]}>{item}</Text>
-                </View>
-              ))}
+          <View style={styles.waterContainer}>
+            <Text style={[styles.waterText, { color: theme.text }]}>
+              {displayWaterIntake} / {displayWaterGoal} {waterUnit}
+            </Text>
+            <View style={styles.waterProgressContainer}>
+              <View style={styles.waterProgressBackground}>
+                <View
+                  style={[
+                    styles.waterProgressFill,
+                    {
+                      width: `${Math.min((waterIntake / waterGoal) * 100, 100)}%`,
+                    }
+                  ]}
+                />
+              </View>
+              <Text style={styles.waterRemainingText}>
+                {Math.max(waterGoal - waterIntake, 0)} {waterUnit} remaining
+              </Text>
             </View>
+          </View>
+        </View>
+
+        {/* Exercise Summary */}
+        <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Exercise</Text>
+          <TextInput
+            style={[styles.exerciseInput, { backgroundColor: theme.inputBackground, color: theme.text }]}
+            placeholder="What did you do today?"
+            placeholderTextColor={theme.placeholder}
+            value={exercise}
+            onChangeText={setExercise}
+            multiline
+          />
+          <TouchableOpacity
+            style={[
+              styles.saveButton,
+              {
+                backgroundColor: theme.importantButton,
+                borderColor: theme.border,
+              },
+            ]}
+            onPress={handleSaveExercise}
+          >
+            <Text style={[styles.saveButtonText, { color: theme.importantButtonText }]}>Save Exercise</Text>
+          </TouchableOpacity>
+          {exerciseSummary ? (
+            exerciseSummary.split('\n').map((item, index) => (
+              <View key={index} style={styles.exerciseItem}>
+                <Text style={[styles.exerciseText, { color: theme.text }]}>{item}</Text>
+              </View>
+            ))
           ) : (
-            <Text style={[styles.noContentText, {color: theme.text}]}>No exercises logged today</Text>
+            <Text style={[styles.noContentText, { color: theme.text }]}>
+              No exercises logged today
+            </Text>
           )}
         </View>
 
         {/* Complete Day Button */}
         <TouchableOpacity
-          style={[styles.completeDayButton, {backgroundColor: theme.buttonBackground}]}
+          style={[
+            styles.completeButton,
+            {
+              backgroundColor: theme.importantButton,
+              borderColor: theme.border,
+            },
+          ]}
           onPress={handleCompleteDay}
           disabled={isSubmitting}
         >
-          <Text style={[styles.completeDayButtonText, {color: theme.text}]}>
-            {isSubmitting ? 'Submitting...' : 'Complete Day'}
+          <Text style={[styles.completeButtonText, { color: theme.importantButtonText }]}>
+            {isSubmitting ? 'Completing...' : 'Complete Day'}
           </Text>
         </TouchableOpacity>
-
-        <View style={{height: 80}}></View>
       </ScrollView>
       <AddActionModal
         isVisible={isAddActionModalVisible}
@@ -482,72 +636,210 @@ const styles = StyleSheet.create({
     // backgroundColor: '#f0f0f0', // Light gray background
   },
   container: {
-    flexGrow: 1,
-    padding: 10,
-
+    flex: 1,
   },
-  card: {
-    // backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 10,
+  header: {
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 16,
+    borderRadius: 20,
+    backgroundColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  profileSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileImageContainer: {
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3, // For Android shadow
+    elevation: 2,
   },
-  cardTitle: {
-    fontSize: 20,
-    fontFamily: 'sans-serif-medium',
-    marginBottom: 10,
+  profilePicture: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 3,
+    borderColor: '#fff',
   },
-  cardSubtitle: {
-    fontSize: 16,
-    fontFamily: 'sans-serif',
-    // color: 'gray',
-    textAlign: 'center'
+  profilePlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
   },
-  mealsContainer: {
-    marginTop: 20,
-    marginBottom: 20
+  profileInitial: {
+    fontSize: 32,
+    fontWeight: '600',
+    color: '#fff',
   },
-  mealsTitle: {
-    fontSize: 20,
-    fontFamily: 'sans-serif-medium',
-    marginBottom: 10,
-    marginLeft: 15,
+  headerTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
-  completeDayButton: {
-    backgroundColor: '#27ae60', // A green color
-    paddingVertical: 15,
-    paddingHorizontal: 30,
+  welcomeContainer: {
+    marginBottom: 4,
+  },
+  greetingText: {
+    fontSize: 15,
+    fontWeight: '500',
+    opacity: 0.8,
+    marginBottom: 2,
+  },
+  nameText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    letterSpacing: 0.3,
+  },
+  dateText: {
+    fontSize: 14,
+    fontWeight: '500',
+    opacity: 0.6,
+    marginTop: 2,
+  },
+  section: {
+    padding: 15,
+    marginHorizontal: 10,
+    marginVertical: 5,
     borderRadius: 10,
-    margin: 20,
-    alignItems: 'center'
   },
-  completeDayButtonText: {
-    // color: 'white',
-    fontSize: 18,
-    fontFamily: 'sans-serif-medium'
-  },
-  exerciseInputContainer: {
+  sectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 15,
   },
-  exerciseInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    padding: 12,
-    marginRight: 10,
-    fontSize: 16,
-    backgroundColor: '#F9FAFB',
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
-  exerciseList: {
-    marginTop: 10,
+  addButton: {
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  calorieContainer: {
+    alignItems: 'center',
+  },
+  calorieText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  progressBar: {
+    width: '100%',
+    height: 10,
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+  },
+  remainingText: {
+    fontSize: 16,
+    marginTop: 5,
+  },
+  noMealsText: {
+    textAlign: 'center',
+    fontSize: 16,
+    fontStyle: 'italic',
+  },
+  waterContainer: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  waterText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  waterProgressContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  waterProgressBackground: {
+    width: '100%',
+    height: 12,
+    backgroundColor: '#E6F3FF',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  waterProgressFill: {
+    height: '100%',
+    backgroundColor: '#2196F3',
+    borderRadius: 6,
+  },
+  waterRemainingText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  waterControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  waterButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  waterButtonText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: '500',
+    lineHeight: 24,
+    textAlign: 'center',
+  },
+  exerciseInput: {
+    borderRadius: 5,
+    padding: 10,
+    minHeight: 80,
+    marginBottom: 10,
+  },
+  saveButton: {
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   exerciseItem: {
     backgroundColor: '#F9FAFB',
@@ -561,19 +853,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     // color: '#333',
   },
-  addButton: {
-    backgroundColor: '#27ae60',
+  completeButton: {
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginVertical: 16,
+    alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  addButtonDisabled: {
-    backgroundColor: '#93C5FD',
-  },
-  addButtonText: {
-    color: 'white',
-    fontSize: 16,
+  completeButtonText: {
+    fontSize: 18,
     fontWeight: '600',
   },
   noContentText: {

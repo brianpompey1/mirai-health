@@ -1,89 +1,107 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, SectionList } from 'react-native';
-import RecipeCard from '../components/RecipeCard';
-import ArticleCard from '../components/ArticleCard';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  SafeAreaView,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
+  Text,
+  Linking
+} from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { recommendationsService } from '../services/recommendationsService';
+import { useAuth } from '../contexts/AuthContext';
+import RecipeCard from '../components/RecipeCard';
 
 const RecommendationsScreen = () => {
   const { theme } = useTheme();
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [recommendations, setRecommendations] = useState([]);
 
-  // Placeholder data (replace with data from your API)
-  const [recipes, setRecipes] = useState([
-    {
-      id: '1',
-      title: 'Grilled Salmon with Asparagus',
-      description: 'A healthy and delicious meal rich in omega-3 fatty acids.',
-      calories: 450,
-      image: '', // Add a URL or local path
-    },
-    {
-      id: '2',
-      title: 'Quinoa Salad with Chickpeas',
-      description: 'A vegetarian option packed with protein and fiber.',
-      calories: 380,
-      image: '',
-    },
-    {
-      id: '3',
-      title: 'Chicken Stir-Fry with Brown Rice',
-      description: 'A quick and easy stir-fry with lean protein and whole grains.',
-      calories: 500,
-      image: '',
-    },
-  ]);
+  const loadRecommendations = useCallback(async () => {
+    try {
+      const data = await recommendationsService.getPersonalizedRecommendations(user.id);
+      setRecommendations(data.recipes);
+      setError(null);
+    } catch (err) {
+      console.error('Error loading recommendations:', err);
+      setError('Failed to load recommendations. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [user.id]);
 
-  const [articles, setArticles] = useState([
-    {
-      id: '1',
-      title: 'The Benefits of High-Intensity Interval Training (HIIT)',
-      excerpt: 'Learn how HIIT workouts can boost your metabolism and burn fat efficiently.',
-    },
-    {
-      id: '2',
-      title: 'Understanding Macronutrients: Protein, Carbs, and Fats',
-      excerpt: 'A guide to understanding the role of macronutrients in weight loss and overall health.',
-    },
-    {
-      id: '3',
-      title: 'Healthy Snacking for Weight Loss',
-      excerpt: 'Tips and ideas for choosing healthy snacks that support your weight loss goals.',
-    },
-  ]);
+  useEffect(() => {
+    loadRecommendations();
+  }, [loadRecommendations]);
 
-  const renderRecipeItem = ({ item }) => <RecipeCard recipe={item} />;
-  const renderArticleItem = ({ item }) => <ArticleCard article={item} />;
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    loadRecommendations();
+  }, [loadRecommendations]);
 
-  // Format data for SectionList
-  const sections = [
-    {
-      title: 'Recommended Recipes',
-      data: recipes,
-      renderItem: renderRecipeItem,
-    },
-    {
-      title: 'Helpful Articles & Information',
-      data: articles,
-      renderItem: renderArticleItem,
-    },
-  ];
+  const handleRecipePress = useCallback(async (recipe) => {
+    if (recipe.sourceUrl) {
+      try {
+        const supported = await Linking.canOpenURL(recipe.sourceUrl);
+        if (supported) {
+          await Linking.openURL(recipe.sourceUrl);
+        }
+      } catch (error) {
+        console.error('Error opening recipe URL:', error);
+      }
+    }
+  }, []);
 
-  const renderSectionHeader = ({ section }) => (
-    <View style={[styles.sectionHeader, { backgroundColor: theme.background }]}>
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>{section.title}</Text>
-    </View>
-  );
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </SafeAreaView>
+    );
+  }
 
-  const renderItem = ({ item, section }) => section.renderItem({ item });
+  if (error) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: theme.text }]}>{error}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <SectionList
-        sections={sections}
-        renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
+      <FlatList
+        data={recommendations}
+        renderItem={({ item }) => (
+          <RecipeCard
+            recipe={item}
+            onPress={handleRecipePress}
+          />
+        )}
         keyExtractor={(item) => item.id}
-        stickySectionHeadersEnabled={false}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.primary}
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: theme.text }]}>
+              No recommendations available at the moment.
+            </Text>
+          </View>
+        }
       />
     </SafeAreaView>
   );
@@ -92,19 +110,29 @@ const RecommendationsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
   },
-  contentContainer: {
-    padding: 15,
+  listContent: {
+    paddingVertical: 8,
   },
-  sectionHeader: {
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 10,
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontFamily: 'sans-serif-medium',
-    marginBottom: 10,
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
 

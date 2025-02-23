@@ -263,25 +263,39 @@ const ProfileScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[styles.editProfileButton, {
-            backgroundColor: theme.buttonBackground,
-            borderColor: theme.border,
-          }]}
-          onPress={() => navigation.navigate('EditProfile')}
-        >
-          <Text style={[styles.editProfileButtonText, { color: theme.buttonText }]}>Edit Profile</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.appointmentButton, {
-            backgroundColor: theme.buttonBackground,
-            borderColor: theme.border,
-          }]}
-          onPress={() => navigation.navigate('RequestAppointment')} // Navigate to RequestAppointmentScreen
-        >
-          <Text style={[styles.appointmentButtonText, { color: theme.buttonText }]}>Request Appointment</Text>
-        </TouchableOpacity>
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              {
+                backgroundColor: theme.actionButton,
+                borderColor: theme.border,
+                marginRight: 8,
+              },
+            ]}
+            onPress={() => navigation.navigate('EditProfile')}
+          >
+            <Text style={[styles.actionButtonText, { color: theme.actionButtonText }]}>
+              Edit Profile
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              {
+                backgroundColor: theme.actionButton,
+                borderColor: theme.border,
+                marginLeft: 8,
+              },
+            ]}
+            onPress={() => navigation.navigate('RequestAppointment')}
+          >
+            <Text style={[styles.actionButtonText, { color: theme.actionButtonText }]}>
+              Request Appointment
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Weight Progress Section */}
         <View style={[styles.weightProgressSection, { backgroundColor: theme.cardBackground }]}>
@@ -462,29 +476,31 @@ const styles = StyleSheet.create({
     fontFamily: 'sans-serif',
     color: 'gray',
   },
-  editProfileButton: {
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    margin: 10,
-    elevation: 2,
+  actionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    marginVertical: 16,
   },
-  editProfileButtonText: {
-    fontSize: 18,
-    fontFamily: 'sans-serif-medium',
-    textAlign: 'center'
+  actionButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  appointmentButton: {
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    margin: 10,
-    elevation: 2,
-  },
-  appointmentButtonText: {
-    fontSize: 18,
-    fontFamily: 'sans-serif-medium',
-    textAlign: 'center'
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   appointmentsSection: {
     backgroundColor: 'white',

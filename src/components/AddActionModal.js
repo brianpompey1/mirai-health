@@ -4,7 +4,7 @@ import Modal from 'react-native-modal';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
-const AddActionModal = ({ isVisible, onClose, onAddFood }) => {
+const AddActionModal = ({ isVisible, onClose, onAddFood, navigation }) => {
   const { theme } = useTheme();
 
   return (
@@ -29,12 +29,22 @@ const AddActionModal = ({ isVisible, onClose, onAddFood }) => {
           <Text style={[styles.subtitle, {color: theme.text}]}>Log your meals to track your nutrition</Text>
         </View>
 
-        <TouchableOpacity style={[styles.addFoodButton, { backgroundColor: theme.background }]} onPress={onAddFood}>
-          <View style={[styles.buttonContent, { backgroundColor: theme.background }]}>
-            <Ionicons name="fast-food-outline" size={24} color="white" />
-            <Text style={[styles.buttonText, {color: theme.text}]}>Add Food Item</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color="white" />
+        <TouchableOpacity
+          style={[
+            styles.actionButton,
+            {
+              backgroundColor: theme.actionButton,
+              borderColor: theme.border,
+            },
+          ]}
+          onPress={() => {
+            onClose();
+            navigation.navigate('AddFood');
+          }}
+        >
+          <Text style={[styles.actionButtonText, { color: theme.actionButtonText }]}>
+            Add Food Item
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.cancelButton, { backgroundColor: theme.background }]} onPress={onClose}>
@@ -78,32 +88,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
   },
-  addFoodButton: {
-    backgroundColor: '#27ae60',
+  actionButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
+    marginVertical: 8,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: 'white',
+  actionButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    marginLeft: 12,
   },
   cancelButton: {
     paddingVertical: 12,
