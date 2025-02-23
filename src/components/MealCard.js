@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { Swipeable } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
 
-const MealCard = ({ meal }) => {
+const MealCard = ({ meal, onEdit, onDelete }) => {
   const { theme } = useTheme();
 
   if (!meal || !meal.foodItems) return null;
@@ -28,22 +30,61 @@ const MealCard = ({ meal }) => {
     }
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      "Delete Meal",
+      "Are you sure you want to delete this meal?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          onPress: () => onDelete(meal.id),
+          style: "destructive"
+        }
+      ]
+    );
+  };
+
+  const renderRightActions = (progress, dragX) => {
+    return (
+      <View style={styles.rightActions}>
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.editButton]} 
+          onPress={() => onEdit(meal)}
+        >
+          <Ionicons name="pencil" size={24} color="white" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.deleteButton]}
+          onPress={handleDelete}
+        >
+          <Ionicons name="trash" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
-    <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
-      <Text style={[styles.mealTitle, { color: theme.text }]}>
-        {meal.type || 'Meal'} {meal.time ? `- ${formatTime(meal.time)}` : ''}
-      </Text>
-      {meal.foodItems.map((item) => (
-        <View key={item.id} style={[styles.foodItem, { backgroundColor: theme.cardBackground }]}>
-          <View style={[styles.foodNameContainer, { backgroundColor: theme.cardBackground }]}>
-            <Text style={[styles.foodName, { color: theme.text }]}>{item.name}</Text>
-            <Text style={[styles.servings, { color: theme.textSecondary }]}>
-              {item.servings} {item.servings === 1 ? 'serving' : 'servings'}
-            </Text>
+    <Swipeable renderRightActions={renderRightActions}>
+      <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
+        <Text style={[styles.mealTitle, { color: theme.text }]}>
+          {meal.type || 'Meal'} {meal.time ? `- ${formatTime(meal.time)}` : ''}
+        </Text>
+        {meal.foodItems.map((item) => (
+          <View key={item.id} style={[styles.foodItem, { backgroundColor: theme.cardBackground }]}>
+            <View style={[styles.foodNameContainer, { backgroundColor: theme.cardBackground }]}>
+              <Text style={[styles.foodName, { color: theme.text }]}>{item.name}</Text>
+              <Text style={[styles.servings, { color: theme.textSecondary }]}>
+                {item.servings} {item.servings === 1 ? 'serving' : 'servings'}
+              </Text>
+            </View>
           </View>
-        </View>
-      ))}
-    </View>
+        ))}
+      </View>
+    </Swipeable>
   );
 };
 
@@ -85,6 +126,26 @@ const styles = StyleSheet.create({
   servings: {
     fontSize: 12,
     marginTop: 2,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+    marginRight: 16,
+  },
+  actionButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 60,
+    height: '100%',
+    borderRadius: 10,
+  },
+  editButton: {
+    backgroundColor: '#4A90E2',
+    marginRight: 8,
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
   }
 });
 

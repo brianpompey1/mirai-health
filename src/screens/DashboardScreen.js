@@ -11,10 +11,10 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native'; // Imp
 import AddActionModal from '../components/AddActionModal';
 import { useTheme } from '../contexts/ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import ExerciseItem from '../components/ExerciseItem';
 
-const DashboardScreen = () => {
+const DashboardScreen = ({ navigation }) => {
   const { theme } = useTheme();
-  const navigation = useNavigation();
   const [userName, setUserName] = useState('');
   const [profilePicture, setProfilePicture] = useState('');
   const [motivationalQuote, setMotivationalQuote] = useState("Believe you can and you're halfway there.");
@@ -370,6 +370,71 @@ const DashboardScreen = () => {
     }
   };
 
+  const handleEditMeal = (meal) => {
+    // Navigate to edit meal screen with meal data
+    navigation.navigate('AddFood', { meal });
+  };
+
+  const handleDeleteMeal = async (mealId) => {
+    try {
+      const { error } = await supabase
+        .from('meals')
+        .delete()
+        .eq('id', mealId);
+
+      if (error) throw error;
+
+      // Refresh meals data
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting meal:', error);
+      Alert.alert('Error', 'Failed to delete meal');
+    }
+  };
+
+  const handleEditExercise = (exercise) => {
+    // Navigate to edit exercise screen with exercise data
+    navigation.navigate('AddExercise', { exercise });
+  };
+
+  const handleDeleteExercise = async (exerciseId) => {
+    try {
+      // First get the current exercise summary
+      const today = new Date().toISOString().split('T')[0];
+      const { data: summaryData } = await supabase
+        .from('daily_summaries')
+        .select('exercise_summary')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .single();
+
+      if (summaryData) {
+        // Remove the exercise from the summary
+        const exercises = summaryData.exercise_summary
+          .split(',')
+          .map(ex => ex.trim())
+          .filter(ex => ex !== '');
+        
+        const updatedExercises = exercises.filter(ex => ex !== exerciseId);
+        
+        // Update the daily summary
+        const { error } = await supabase
+          .from('daily_summaries')
+          .update({ exercise_summary: updatedExercises.join(', ') })
+          .eq('user_id', userId)
+          .eq('date', today);
+
+        if (error) throw error;
+
+        // Refresh exercise data
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error deleting exercise:', error);
+      Alert.alert('Error', 'Failed to delete exercise');
+    }
+  };
+
   const renderExerciseModal = () => (
     <Modal
       visible={isExerciseModalVisible}
@@ -527,7 +592,12 @@ const DashboardScreen = () => {
             </View>
             {Array.isArray(meals) && meals.length > 0 ? (
               meals.map((meal) => (
-                <MealCard key={meal.id} meal={meal} theme={theme} />
+                <MealCard 
+                  key={meal.id} 
+                  meal={meal} 
+                  onEdit={handleEditMeal}
+                  onDelete={handleDeleteMeal}
+                />
               ))
             ) : (
               <Text style={[styles.noMealsText, { color: theme.text }]}>
@@ -590,7 +660,7 @@ const DashboardScreen = () => {
             </View>
           </View>
 
-          {/* Exercise Summary */}
+          {/* Exercise Section */}
           <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Exercise</Text>
@@ -602,16 +672,23 @@ const DashboardScreen = () => {
                     borderColor: theme.border,
                   },
                 ]}
-                onPress={() => setIsExerciseModalVisible(true)}
+                onPress={() => navigation.navigate('AddExercise')}
               >
                 <Text style={[styles.addButtonText, { color: theme.importantButtonText }]}>+ Add Exercise</Text>
               </TouchableOpacity>
             </View>
             {exerciseSummary ? (
-              <Text style={[styles.exerciseSummary, { color: theme.text }]}>{exerciseSummary}</Text>
+              exerciseSummary.split(',').map((exercise, index) => (
+                <ExerciseItem
+                  key={index}
+                  exercise={{ id: index, name: exercise.trim() }}
+                  onEdit={handleEditExercise}
+                  onDelete={handleDeleteExercise}
+                />
+              ))
             ) : (
-              <Text style={[styles.noExerciseText, { color: theme.textSecondary }]}>
-                No exercise logged yet today
+              <Text style={[styles.noExerciseText, { color: theme.text }]}>
+                No exercises logged yet today
               </Text>
             )}
           </View>
