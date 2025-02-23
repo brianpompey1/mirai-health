@@ -348,6 +348,32 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         marginTop: 5,
     },
+    scrollView: {
+        flex: 1,
+        paddingBottom: 80, // Add padding to account for the button
+    },
+    completeButtonContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0, 0, 0, 0.1)',
+    },
+    completeButton: {
+        width: '100%',
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+    },
+    completeButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
 });
 
 const LogScreen = ({ navigation, route }) => {
@@ -947,7 +973,7 @@ const LogScreen = ({ navigation, route }) => {
                     textColor={theme.text}
                 />
 
-                <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+                <ScrollView style={[styles.scrollView, { backgroundColor: theme.background }]}>
                     {renderSummary()}
 
                     <View style={[styles.mealsContainer, { backgroundColor: theme.cardBackground }]}>
@@ -967,6 +993,24 @@ const LogScreen = ({ navigation, route }) => {
                         )}
                     </View>
                 </ScrollView>
+                
+                {/* Complete Day Button Container
+                <View style={[styles.completeButtonContainer, { backgroundColor: theme.background }]}>
+                    <TouchableOpacity
+                        style={[
+                            styles.completeButton,
+                            {
+                                backgroundColor: theme.importantButton,
+                                borderColor: theme.border,
+                            },
+                        ]}
+                        onPress={() => console.log('Complete Day')}
+                    >
+                        <Text style={[styles.completeButtonText, { color: theme.importantButtonText }]}>
+                            Complete Day
+                        </Text>
+                    </TouchableOpacity>
+                </View> */}
             </View>
         </SafeAreaView>
     );

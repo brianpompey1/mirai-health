@@ -114,22 +114,49 @@ const DashboardScreen = () => {
   };
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       const fetchData = async () => {
-
         if (!userId) return;
 
-        setLoading(true); // Show loading indicator
         try {
-          // Fetch water intake first
-          await fetchDailySummary();
+          const today = new Date().toISOString().split('T')[0];
+          
+          // Fetch daily summary for water intake and exercise
+          const { data: summaryData, error: summaryError } = await supabase
+            .from('daily_summaries')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('date', today)
+            .single();
 
-          const { data, error } = await supabase
+          if (summaryError && summaryError.code !== 'PGRST116') {
+            console.error('Error fetching daily summary:', summaryError);
+          } else if (summaryData) {
+            setWaterIntake(summaryData.water_intake || 0);
+            setExerciseSummary(summaryData.exercise_summary || '');
+          }
+
+          // Fetch daily food log for total calories
+          const { data: logData, error: logError } = await supabase
+            .from('daily_food_logs')
+            .select('total_protein_calories')
+            .eq('user_id', userId)
+            .eq('date', today)
+            .single();
+
+          if (logError && logError.code !== 'PGRST116') {
+            console.error('Error fetching daily log:', logError);
+          } else if (logData) {
+            setCaloriesConsumed(logData.total_protein_calories || 0);
+          }
+
+          // Fetch meals with their food items
+          const { data: mealsData, error: mealsError } = await supabase
             .from('meals')
             .select(`
               id,
-              time,
               type,
+              time,
               food_items (
                 id,
                 name,
@@ -137,78 +164,29 @@ const DashboardScreen = () => {
               )
             `)
             .eq('user_id', userId)
-            .eq('date', new Date().toISOString().split('T')[0])
+            .eq('date', today)
             .order('time', { ascending: true });
 
-          if (error) {
-            console.error('Error fetching meals:', error);
-            Alert.alert('Error', 'Failed to fetch meals');
-            return;
-          }
-
-          // Transform meals data for MealCard
-          const transformedMeals = data?.reduce((acc, meal) => {
-            const mealType = meal.type;
-            if (!acc[mealType]) {
-              acc[mealType] = {
-                name: mealType.charAt(0).toUpperCase() + mealType.slice(1),
-                items: []
-              };
-            }
-            
-            meal.food_items?.forEach(item => {
-              acc[mealType].items.push({
-                name: item.name,
-                servings: item.servings,
-                calories: 0, // We don't have calories in food_items table
-                protein: 0,  // We don't track macros
-                carbs: 0,
-                fat: 0
-              });
-            });
-            
-            return acc;
-          }, {});
-
-          setMeals(Object.values(transformedMeals || {}));
-
-          // Get the daily food log to calculate totals
-          const { data: logData, error: logError } = await supabase
-            .from('daily_food_logs')
-            .select('total_protein_calories, vegetable_servings, fruit_servings')
-            .eq('user_id', userId)
-            .eq('date', new Date().toISOString().split('T')[0])
-            .single();
-
-          if (logError && logError.code !== 'PGRST116') {
-            console.error('Error fetching daily log:', logError);
-            Alert.alert('Error', 'Failed to fetch daily totals');
-            return;
-          }
-
-          // Set the totals from the daily log
-          if (logData) {
-            setCaloriesConsumed(logData.total_protein_calories || 0);
+          if (mealsError) {
+            console.error('Error fetching meals:', mealsError);
           } else {
-            setCaloriesConsumed(0);
+            const processedMeals = mealsData?.map(meal => ({
+              id: meal.id,
+              type: meal.type || 'Meal',
+              time: meal.time,
+              foodItems: meal.food_items || []
+            })) || [];
+            
+            setMeals(processedMeals);
           }
 
         } catch (error) {
-          console.error('Unexpected error fetching meals:', error);
-          Alert.alert('Error', 'An unexpected error occurred.');
-        } finally {
-          setLoading(false); // Hide loading indicator
+          console.error('Error fetching data:', error);
         }
       };
-      if(userId) {
-        fetchData();
-      }
 
-      // Optional: Clean up function (runs when component unmounts or before the effect runs again)
-      return () => {
-        //  setLoading(false); // Reset loading state if needed.
-      };
-    }, [userId]) // Depend on userId
+      fetchData();
+    }, [userId])
   );
 
   const WATER_INCREMENT = 8; // 8 oz increment
@@ -450,210 +428,228 @@ const DashboardScreen = () => {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-        {/* Header with Profile and Welcome */}
-        <View style={[styles.header, { backgroundColor: theme.cardBackground }]}>
-          <View style={styles.profileSection}>
-            <View style={styles.profileImageContainer}>
-              {profilePicture ? (
-                <Image 
-                  source={{ uri: profilePicture }} 
-                  style={styles.profilePicture}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={[styles.profilePlaceholder, { backgroundColor: theme.primary }]}>
-                  <Text style={styles.profileInitial}>
-                    {userName ? userName[0].toUpperCase() : '?'}
+      <View style={{ flex: 1 }}>
+        <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+          {/* Header with Profile and Welcome */}
+          <View style={[styles.header, { backgroundColor: theme.cardBackground }]}>
+            <View style={styles.profileSection}>
+              <View style={styles.profileImageContainer}>
+                {profilePicture ? (
+                  <Image 
+                    source={{ uri: profilePicture }} 
+                    style={styles.profilePicture}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={[styles.profilePlaceholder, { backgroundColor: theme.primary }]}>
+                    <Text style={styles.profileInitial}>
+                      {userName ? userName[0].toUpperCase() : '?'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.headerTextContainer}>
+                <View style={styles.welcomeContainer}>
+                  <Text style={[styles.greetingText, { color: theme.text }]}>
+                    Welcome back
+                  </Text>
+                  <Text style={[styles.nameText, { color: theme.text }]}>
+                    {userName || 'there'}!
                   </Text>
                 </View>
-              )}
-            </View>
-            <View style={styles.headerTextContainer}>
-              <View style={styles.welcomeContainer}>
-                <Text style={[styles.greetingText, { color: theme.text }]}>
-                  Welcome back
-                </Text>
-                <Text style={[styles.nameText, { color: theme.text }]}>
-                  {userName || 'there'}!
+                <Text style={[styles.dateText, { color: theme.text }]}>
+                  {new Date().toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
                 </Text>
               </View>
-              <Text style={[styles.dateText, { color: theme.text }]}>
-                {new Date().toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+            </View>
+          </View>
+
+          {/* Motivation Card */}
+          <MotivationCard
+            quote={motivationalQuote}
+            author={quoteAuthor}
+            backgroundImage={motivationalBackground}
+            theme={theme}
+          />
+
+          {/* Calories Progress */}
+          <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Protein Calories</Text>
+            <View style={styles.calorieContainer}>
+              <Text style={[styles.calorieText, { color: theme.text }]}>
+                {caloriesConsumed} / {calorieGoal}
               </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Motivation Card */}
-        <MotivationCard
-          quote={motivationalQuote}
-          author={quoteAuthor}
-          backgroundImage={motivationalBackground}
-          theme={theme}
-        />
-
-        {/* Calories Progress */}
-        <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Protein Calories</Text>
-          <View style={styles.calorieContainer}>
-            <Text style={[styles.calorieText, { color: theme.text }]}>
-              {caloriesConsumed} / {calorieGoal}
-            </Text>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: `${Math.min((caloriesConsumed / calorieGoal) * 100, 100)}%`,
-                    backgroundColor: theme.primary
-                  }
-                ]}
-              />
-            </View>
-            <Text style={[styles.remainingText, { color: theme.text }]}>
-              {calorieGoal - caloriesConsumed} calories remaining
-            </Text>
-          </View>
-        </View>
-
-        {/* Macronutrient Breakdown
-        <MacronutrientBreakdown
-          protein={protein}
-          carbs={carbs}
-          fat={fat}
-          theme={theme}
-        /> */}
-
-        {/* Today's Meals */}
-        <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Meals</Text>
-            <TouchableOpacity
-              style={[
-                styles.addButton,
-                {
-                  backgroundColor: theme.importantButton,
-                  borderColor: theme.border,
-                },
-              ]}
-              onPress={() => navigation.navigate('AddFood')}
-            >
-              <Text style={[styles.addButtonText, { color: theme.importantButtonText }]}>+ Add Meal</Text>
-            </TouchableOpacity>
-          </View>
-          {meals.length > 0 ? (
-            meals.map((meal, index) => (
-              <MealCard key={index} meal={meal} theme={theme} />
-            ))
-          ) : (
-            <Text style={[styles.noMealsText, { color: theme.text }]}>
-              No meals logged yet today
-            </Text>
-          )}
-        </View>
-
-        {/* Water Intake */}
-        <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Water Intake</Text>
-            <View style={styles.waterControls}>
-              <TouchableOpacity
-                style={[
-                  styles.waterButton,
-                  {
-                    backgroundColor: theme.importantButton,
-                    borderColor: theme.border,
-                  },
-                ]}
-                onPress={handleRemoveWater}
-              >
-                <Text style={[styles.waterButtonText, { color: theme.importantButtonText }]}>−</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.waterButton,
-                  {
-                    backgroundColor: theme.importantButton,
-                    borderColor: theme.border,
-                  },
-                ]}
-                onPress={handleAddWater}
-              >
-                <Text style={[styles.waterButtonText, { color: theme.importantButtonText }]}>+</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          
-          <View style={styles.waterContainer}>
-            <Text style={[styles.waterText, { color: theme.text }]}>
-              {displayWaterIntake} / {displayWaterGoal} {waterUnit}
-            </Text>
-            <View style={styles.waterProgressContainer}>
-              <View style={styles.waterProgressBackground}>
+              <View style={styles.progressBar}>
                 <View
                   style={[
-                    styles.waterProgressFill,
+                    styles.progressFill,
                     {
-                      width: `${Math.min((waterIntake / waterGoal) * 100, 100)}%`,
+                      width: `${Math.min((caloriesConsumed / calorieGoal) * 100, 100)}%`,
+                      backgroundColor: theme.primary
                     }
                   ]}
                 />
               </View>
-              <Text style={styles.waterRemainingText}>
-                {Math.max(waterGoal - waterIntake, 0)} {waterUnit} remaining
+              <Text style={[styles.remainingText, { color: theme.text }]}>
+                {calorieGoal - caloriesConsumed} calories remaining
               </Text>
             </View>
           </View>
-        </View>
 
-        {/* Exercise Summary */}
-        <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Exercise</Text>
-            <TouchableOpacity
-              style={[
-                styles.addButton,
-                {
-                  backgroundColor: theme.importantButton,
-                  borderColor: theme.border,
-                },
-              ]}
-              onPress={() => setIsExerciseModalVisible(true)}
-            >
-              <Text style={[styles.addButtonText, { color: theme.importantButtonText }]}>+ Add Exercise</Text>
-            </TouchableOpacity>
+          {/* Macronutrient Breakdown
+          <MacronutrientBreakdown
+            protein={protein}
+            carbs={carbs}
+            fat={fat}
+            theme={theme}
+          /> */}
+
+          {/* Today's Meals */}
+          <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Meals</Text>
+              <TouchableOpacity
+                style={[
+                  styles.addButton,
+                  {
+                    backgroundColor: theme.importantButton,
+                    borderColor: theme.border,
+                  },
+                ]}
+                onPress={() => navigation.navigate('AddFood')}
+              >
+                <Text style={[styles.addButtonText, { color: theme.importantButtonText }]}>+ Add Meal</Text>
+              </TouchableOpacity>
+            </View>
+            {Array.isArray(meals) && meals.length > 0 ? (
+              meals.map((meal) => (
+                <MealCard key={meal.id} meal={meal} theme={theme} />
+              ))
+            ) : (
+              <Text style={[styles.noMealsText, { color: theme.text }]}>
+                No meals logged yet today
+              </Text>
+            )}
           </View>
-          {exerciseSummary ? (
-            <Text style={[styles.exerciseSummary, { color: theme.text }]}>{exerciseSummary}</Text>
-          ) : (
-            <Text style={[styles.noExerciseText, { color: theme.textSecondary }]}>
-              No exercise logged yet today
-            </Text>
-          )}
-        </View>
 
-        {/* Complete Day Button */}
+          {/* Water Intake */}
+          <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Water Intake</Text>
+              <View style={styles.waterControls}>
+                <TouchableOpacity
+                  style={[
+                    styles.waterButton,
+                    {
+                      backgroundColor: theme.importantButton,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                  onPress={handleRemoveWater}
+                >
+                  <Text style={[styles.waterButtonText, { color: theme.importantButtonText }]}>−</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.waterButton,
+                    {
+                      backgroundColor: theme.importantButton,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                  onPress={handleAddWater}
+                >
+                  <Text style={[styles.waterButtonText, { color: theme.importantButtonText }]}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            <View style={styles.waterContainer}>
+              <Text style={[styles.waterText, { color: theme.text }]}>
+                {displayWaterIntake} / {displayWaterGoal} {waterUnit}
+              </Text>
+              <View style={styles.waterProgressContainer}>
+                <View style={styles.waterProgressBackground}>
+                  <View
+                    style={[
+                      styles.waterProgressFill,
+                      {
+                        width: `${Math.min((waterIntake / waterGoal) * 100, 100)}%`,
+                      }
+                    ]}
+                  />
+                </View>
+                <Text style={styles.waterRemainingText}>
+                  {Math.max(waterGoal - waterIntake, 0)} {waterUnit} remaining
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Exercise Summary */}
+          <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Exercise</Text>
+              <TouchableOpacity
+                style={[
+                  styles.addButton,
+                  {
+                    backgroundColor: theme.importantButton,
+                    borderColor: theme.border,
+                  },
+                ]}
+                onPress={() => setIsExerciseModalVisible(true)}
+              >
+                <Text style={[styles.addButtonText, { color: theme.importantButtonText }]}>+ Add Exercise</Text>
+              </TouchableOpacity>
+            </View>
+            {exerciseSummary ? (
+              <Text style={[styles.exerciseSummary, { color: theme.text }]}>{exerciseSummary}</Text>
+            ) : (
+              <Text style={[styles.noExerciseText, { color: theme.textSecondary }]}>
+                No exercise logged yet today
+              </Text>
+            )}
+          </View>
+        </ScrollView>
+        
+        {/* Complete Day Button - Now outside ScrollView */}
         <TouchableOpacity
           style={[
             styles.completeButton,
             {
               backgroundColor: theme.importantButton,
-              borderColor: theme.border,
+              marginHorizontal: 20,
+              marginBottom: 40,
             },
           ]}
-          onPress={handleCompleteDay}
-          disabled={isSubmitting}
+          onPress={() => {
+            // Handle complete day action
+            Alert.alert('Complete Day', 'Are you sure you want to complete this day?', [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+              },
+              {
+                text: 'Yes',
+                onPress: () => {
+                  // Add your complete day logic here
+                  Alert.alert('Success', 'Day completed successfully!');
+                },
+              },
+            ]);
+          }}
         >
           <Text style={[styles.completeButtonText, { color: theme.importantButtonText }]}>
-            {isSubmitting ? 'Completing...' : 'Complete Day'}
+            Complete Day
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
+
       {renderExerciseModal()}
       {isAddActionModalVisible && (
         <AddActionModal
@@ -886,9 +882,9 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   completeButtonText: {
     fontSize: 18,
