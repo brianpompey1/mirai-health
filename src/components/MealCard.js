@@ -80,7 +80,7 @@ const MealCard = ({ meal, onEdit, onDelete }) => {
           <View key={item.id} style={[styles.foodItem, { backgroundColor: theme.cardBackground }]}>
             <View style={[styles.foodNameContainer, { backgroundColor: theme.cardBackground }]}>
               <Text style={[styles.foodName, { color: theme.text }]}>{item.name}</Text>
-              <Text style={[styles.servings, { color: theme.textSecondary }]}>
+              <Text style={[styles.servings, { color: theme.secondary }]}>
                 {item.servings} {item.servings === 1 ? 'serving' : 'servings'}
               </Text>
             </View>

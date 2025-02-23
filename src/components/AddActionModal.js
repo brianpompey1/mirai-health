@@ -3,9 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Modal from 'react-native-modal';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { useNavigation } from '@react-navigation/native';
 
-const AddActionModal = ({ isVisible, onClose, onAddFood, navigation }) => {
+const AddActionModal = ({ isVisible, onClose, onAddFood }) => {
   const { theme } = useTheme();
+  const navigation = useNavigation();
 
   return (
     <Modal

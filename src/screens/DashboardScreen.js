@@ -4,7 +4,6 @@ import DashboardHeader from '../components/DashboardHeader';
 import MotivationCard from '../components/MotivationCard';
 import CalorieProgress from '../components/CalorieProgress';
 import WaterIntake from '../components/WaterIntake';
-import MacronutrientBreakdown from '../components/MacronutrientBreakdown';
 import MealCard from '../components/MealCard';
 import { supabase } from '../utils/supabase';
 import { useFocusEffect, useNavigation } from '@react-navigation/native'; // Import useFocusEffect and useNavigation
@@ -24,9 +23,6 @@ const DashboardScreen = ({ navigation }) => {
   const [calorieGoal, setCalorieGoal] = useState(2004); // From image
   const [waterIntake, setWaterIntake] = useState(0);
   const [waterGoal, setWaterGoal] = useState(64);  // Default to 64 oz (8 cups)
-  const [protein, setProtein] = useState(0);
-  const [carbs, setCarbs] = useState(0);
-  const [fat, setFat] = useState(0);
   const [meals, setMeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
@@ -967,6 +963,7 @@ const DashboardScreen = ({ navigation }) => {
 
       {isAddActionModalVisible && (
         <AddActionModal
+          isVisible={isAddActionModalVisible}
           onClose={() => setIsAddActionModalVisible(false)}
           onAddFood={() => navigation.navigate('AddFood')}
           onAddExercise={() => setIsExerciseModalVisible(true)}
