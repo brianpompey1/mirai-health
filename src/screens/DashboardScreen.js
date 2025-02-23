@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, Text, SafeAreaView, TouchableOpacity, Alert, TextInput, Image, ImageBackground } from 'react-native';
+import { View, ScrollView, StyleSheet, Text, SafeAreaView, TouchableOpacity, Alert, TextInput, Image, ImageBackground, Modal } from 'react-native';
 import DashboardHeader from '../components/DashboardHeader';
 import MotivationCard from '../components/MotivationCard';
 import CalorieProgress from '../components/CalorieProgress';
@@ -10,6 +10,7 @@ import { supabase } from '../utils/supabase';
 import { useFocusEffect, useNavigation } from '@react-navigation/native'; // Import useFocusEffect and useNavigation
 import AddActionModal from '../components/AddActionModal';
 import { useTheme } from '../contexts/ThemeContext';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const DashboardScreen = () => {
   const { theme } = useTheme();
@@ -33,6 +34,8 @@ const DashboardScreen = () => {
   const [exercise, setExercise] = useState('');
   const [exerciseSummary, setExerciseSummary] = useState('');
   const [isAddActionModalVisible, setIsAddActionModalVisible] = useState(false);
+  const [isExerciseModalVisible, setIsExerciseModalVisible] = useState(false);
+  const [lastWaterFetchDate, setLastWaterFetchDate] = useState(null);
 
   const waterUnit = 'oz';
 
@@ -78,34 +81,37 @@ const DashboardScreen = () => {
     fetchUser();
   }, [])
 
-  useEffect(() => {
-    const fetchDailySummary = async () => {
-      if (!userId) return;
+  const fetchDailySummary = async () => {
+    if (!userId) return;
 
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        const { data, error } = await supabase
-          .from('daily_summaries')
-          .select('water_intake')
-          .eq('user_id', userId)
-          .eq('date', today)
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error fetching daily summary:', error);
-          return;
-        }
-
-        if (data) {
-          setWaterIntake(data.water_intake || 0);
-        }
-      } catch (error) {
-        console.error('Error fetching daily summary:', error);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // If we've already fetched water intake today, skip the fetch
+      if (lastWaterFetchDate === today) {
+        return;
       }
-    };
 
-    fetchDailySummary();
-  }, [userId]);
+      const { data, error } = await supabase
+        .from('daily_summaries')
+        .select('water_intake')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching daily summary:', error);
+        return;
+      }
+
+      // Update the water intake and last fetch date
+      setWaterIntake(data?.water_intake || 0);
+      setLastWaterFetchDate(today);
+      
+    } catch (error) {
+      console.error('Error fetching daily summary:', error);
+    }
+  };
 
   useFocusEffect(
     React.useCallback(() => {
@@ -115,6 +121,9 @@ const DashboardScreen = () => {
 
         setLoading(true); // Show loading indicator
         try {
+          // Fetch water intake first
+          await fetchDailySummary();
+
           const { data, error } = await supabase
             .from('meals')
             .select(`
@@ -184,41 +193,6 @@ const DashboardScreen = () => {
             setCaloriesConsumed(0);
           }
 
-          //Fetch water data.
-          const {data: waterData, error: waterError} = await supabase
-          .from('daily_summaries')
-          .select('water_intake')
-          .eq('user_id', userId)
-          .eq('date', new Date().toISOString().split('T')[0])
-          .single()
-
-          if(waterError && waterError.code !== 'PGRST116') { //Ignore no data error
-            console.error("Error getting water data", waterError);
-            Alert.alert("Error", "Could not load water data");
-            return;
-          }
-          if(waterData) {
-            setWaterIntake(waterData.water_intake);
-          }
-
-          // Fetch exercise summary
-          const { data: exerciseData, error: exerciseError } = await supabase
-            .from('daily_summaries')
-            .select('exercise_summary')
-            .eq('user_id', userId)
-            .eq('date', new Date().toISOString().split('T')[0])
-            .single();
-
-          if (exerciseError && exerciseError.code !== 'PGRST116') {
-            console.error('Error fetching exercise summary:', exerciseError);
-            Alert.alert('Error', 'Could not load exercise data');
-            return;
-          }
-
-          if (exerciseData) {
-            setExerciseSummary(exerciseData.exercise_summary || '');
-          }
-
         } catch (error) {
           console.error('Unexpected error fetching meals:', error);
           Alert.alert('Error', 'An unexpected error occurred.');
@@ -251,7 +225,7 @@ const DashboardScreen = () => {
       const today = new Date().toISOString().split('T')[0];
       const { data: existingData, error: fetchError } = await supabase
         .from('daily_summaries')
-        .select('id')
+        .select('*')
         .eq('user_id', userId)
         .eq('date', today)
         .single();
@@ -268,7 +242,8 @@ const DashboardScreen = () => {
           ...(existingData?.id ? { id: existingData.id } : {}),
           user_id: userId,
           date: today,
-          water_intake: newWaterIntake
+          water_intake: newWaterIntake,
+          exercise_summary: existingData?.exercise_summary || exerciseSummary
         });
 
       if (error) {
@@ -295,7 +270,7 @@ const DashboardScreen = () => {
       const today = new Date().toISOString().split('T')[0];
       const { data: existingData, error: fetchError } = await supabase
         .from('daily_summaries')
-        .select('id')
+        .select('*')
         .eq('user_id', userId)
         .eq('date', today)
         .single();
@@ -312,7 +287,8 @@ const DashboardScreen = () => {
           ...(existingData?.id ? { id: existingData.id } : {}),
           user_id: userId,
           date: today,
-          water_intake: newWaterIntake
+          water_intake: newWaterIntake,
+          exercise_summary: existingData?.exercise_summary || exerciseSummary
         });
 
       if (error) {
@@ -328,43 +304,57 @@ const DashboardScreen = () => {
   };
 
   const handleSaveExercise = async () => {
-    if (!exercise.trim() || isSubmitting) return;
+    if (!userId || isSubmitting || !exercise.trim()) return;
 
-    setIsSubmitting(true);
     try {
+      setIsSubmitting(true);
       const today = new Date().toISOString().split('T')[0];
-      const newExercise = exercise.trim();
-      
-      // First try to update existing record
-      const { data, error: updateError } = await supabase
+
+      // First check if there's an existing record for today
+      const { data: existingData, error: fetchError } = await supabase
         .from('daily_summaries')
-        .update({ 
-          exercise_summary: exerciseSummary 
-            ? `${exerciseSummary}\n${newExercise}`  // Append new exercise
-            : newExercise                           // First exercise of the day
-        })
-        .match({ user_id: userId, date: today })
-        .select();
+        .select('*')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .single();
 
-      if (updateError) {
-        // If update fails (no existing record), insert new record
-        const { error: insertError } = await supabase
-          .from('daily_summaries')
-          .insert({
-            user_id: userId,
-            date: today,
-            exercise_summary: newExercise
-          });
-
-        if (insertError) throw insertError;
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching daily summary:', fetchError);
+        return;
       }
 
-      setExerciseSummary(prev => prev ? `${prev}\n${newExercise}` : newExercise);
+      // Prepare the new exercise summary
+      const newExerciseSummary = existingData?.exercise_summary 
+        ? `${existingData.exercise_summary}\n${exercise.trim()}`
+        : exercise.trim();
+
+      // Prepare the data for upsert
+      const summaryData = {
+        ...(existingData?.id ? { id: existingData.id } : {}),
+        user_id: userId,
+        date: today,
+        exercise_summary: newExerciseSummary,
+        water_intake: existingData?.water_intake || waterIntake
+      };
+
+      const { error } = await supabase
+        .from('daily_summaries')
+        .upsert(summaryData);
+
+      if (error) {
+        console.error('Error saving exercise:', error);
+        Alert.alert('Error', 'Failed to save exercise');
+        return;
+      }
+
+      setExerciseSummary(newExerciseSummary);
       setExercise(''); // Clear input
-      Alert.alert('Success', 'Exercise saved successfully!');
+      setIsExerciseModalVisible(false); // Close modal
+      Alert.alert('Success', 'Exercise saved successfully');
+
     } catch (error) {
       console.error('Error saving exercise:', error);
-      Alert.alert('Error', 'Failed to save exercise');
+      Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -402,9 +392,65 @@ const DashboardScreen = () => {
     }
   };
 
+  const renderExerciseModal = () => (
+    <Modal
+      visible={isExerciseModalVisible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setIsExerciseModalVisible(false)}
+    >
+      <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+        <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Add Exercise</Text>
+            <TouchableOpacity 
+              onPress={() => setIsExerciseModalVisible(false)}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={24} color={theme.text} />
+            </TouchableOpacity>
+          </View>
+          
+          <TextInput
+            style={[
+              styles.exerciseInput,
+              { 
+                backgroundColor: theme.inputBackground,
+                color: theme.text,
+                borderColor: theme.border
+              }
+            ]}
+            placeholder="What exercise did you do today?"
+            placeholderTextColor={theme.textSecondary}
+            value={exercise}
+            onChangeText={setExercise}
+            multiline
+            numberOfLines={4}
+          />
+
+          <TouchableOpacity
+            style={[
+              styles.saveButton,
+              {
+                backgroundColor: theme.importantButton,
+                opacity: exercise.trim() ? 1 : 0.5
+              }
+            ]}
+            onPress={handleSaveExercise}
+            disabled={!exercise.trim() || isSubmitting}
+          >
+            <Text style={[styles.saveButtonText, { color: theme.importantButtonText }]}>
+              {isSubmitting ? 'Saving...' : 'Save Exercise'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
-    <SafeAreaView style={[styles.safeArea, {backgroundColor: theme.background}]}>
-      <ScrollView style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Header with Profile and Welcome */}
         <View style={[styles.header, { backgroundColor: theme.cardBackground }]}>
           <View style={styles.profileSection}>
@@ -458,7 +504,7 @@ const DashboardScreen = () => {
             <Text style={[styles.calorieText, { color: theme.text }]}>
               {caloriesConsumed} / {calorieGoal}
             </Text>
-            <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
+            <View style={styles.progressBar}>
               <View
                 style={[
                   styles.progressFill,
@@ -567,36 +613,26 @@ const DashboardScreen = () => {
 
         {/* Exercise Summary */}
         <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Exercise</Text>
-          <TextInput
-            style={[styles.exerciseInput, { backgroundColor: theme.inputBackground, color: theme.text }]}
-            placeholder="What did you do today?"
-            placeholderTextColor={theme.placeholder}
-            value={exercise}
-            onChangeText={setExercise}
-            multiline
-          />
-          <TouchableOpacity
-            style={[
-              styles.saveButton,
-              {
-                backgroundColor: theme.importantButton,
-                borderColor: theme.border,
-              },
-            ]}
-            onPress={handleSaveExercise}
-          >
-            <Text style={[styles.saveButtonText, { color: theme.importantButtonText }]}>Save Exercise</Text>
-          </TouchableOpacity>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Exercise</Text>
+            <TouchableOpacity
+              style={[
+                styles.addButton,
+                {
+                  backgroundColor: theme.importantButton,
+                  borderColor: theme.border,
+                },
+              ]}
+              onPress={() => setIsExerciseModalVisible(true)}
+            >
+              <Text style={[styles.addButtonText, { color: theme.importantButtonText }]}>+ Add Exercise</Text>
+            </TouchableOpacity>
+          </View>
           {exerciseSummary ? (
-            exerciseSummary.split('\n').map((item, index) => (
-              <View key={index} style={styles.exerciseItem}>
-                <Text style={[styles.exerciseText, { color: theme.text }]}>{item}</Text>
-              </View>
-            ))
+            <Text style={[styles.exerciseSummary, { color: theme.text }]}>{exerciseSummary}</Text>
           ) : (
-            <Text style={[styles.noContentText, { color: theme.text }]}>
-              No exercises logged today
+            <Text style={[styles.noExerciseText, { color: theme.textSecondary }]}>
+              No exercise logged yet today
             </Text>
           )}
         </View>
@@ -618,14 +654,15 @@ const DashboardScreen = () => {
           </Text>
         </TouchableOpacity>
       </ScrollView>
-      <AddActionModal
-        isVisible={isAddActionModalVisible}
-        onClose={() => setIsAddActionModalVisible(false)}
-        onAddFood={() => {
-          setIsAddActionModalVisible(false);
-          navigation.navigate('Log');
-        }}
-      />
+      {renderExerciseModal()}
+      {isAddActionModalVisible && (
+        <AddActionModal
+          onClose={() => setIsAddActionModalVisible(false)}
+          onAddFood={() => navigation.navigate('AddFood')}
+          onAddExercise={() => setIsExerciseModalVisible(true)}
+          theme={theme}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -825,33 +862,17 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     textAlign: 'center',
   },
-  exerciseInput: {
-    borderRadius: 5,
-    padding: 10,
-    minHeight: 80,
-    marginBottom: 10,
-  },
-  saveButton: {
-    padding: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    color: 'white',
+  exerciseSummary: {
     fontSize: 16,
-    fontWeight: 'bold',
+    marginTop: 10,
+    lineHeight: 22,
+    paddingHorizontal: 15,
   },
-  exerciseItem: {
-    backgroundColor: '#F9FAFB',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  exerciseText: {
+  noExerciseText: {
     fontSize: 16,
-    // color: '#333',
+    fontStyle: 'italic',
+    marginTop: 10,
+    paddingHorizontal: 15,
   },
   completeButton: {
     paddingVertical: 12,
@@ -873,11 +894,54 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  noContentText: {
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    borderRadius: 15,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  exerciseInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
     fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginVertical: 10,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  saveButton: {
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

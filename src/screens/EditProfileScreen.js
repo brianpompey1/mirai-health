@@ -171,8 +171,8 @@ const EditProfileScreen = ({ navigation }) => {
 
   if (loading) {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Loading...</Text>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+      <Text style={{ color: theme.text }}>Loading...</Text>
     </View>
   );
   }

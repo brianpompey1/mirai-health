@@ -324,6 +324,30 @@ const styles = StyleSheet.create({
     calendarIcon: {
         marginLeft: 4,
     },
+    summaryHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 5,
+    },
+    summaryLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    summaryValue: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    exerciseSummary: {
+        fontSize: 16,
+        marginTop: 5,
+        lineHeight: 22,
+    },
+    noExercise: {
+        fontSize: 16,
+        fontStyle: 'italic',
+        marginTop: 5,
+    },
 });
 
 const LogScreen = ({ navigation, route }) => {
@@ -334,6 +358,7 @@ const LogScreen = ({ navigation, route }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [waterIntake, setWaterIntake] = useState(0);
     const [waterGoal, setWaterGoal] = useState(64); // Default to 64 oz (8 cups)
+    const [exerciseSummary, setExerciseSummary] = useState('');
     const waterUnit = 'oz';
     const WATER_INCREMENT = 8; // 8 oz increment
     const [selectedMeal, setSelectedMeal] = useState(null);
@@ -352,121 +377,115 @@ const LogScreen = ({ navigation, route }) => {
         fetchUser();
     }, []);
 
-    const fetchLogData = async () => {
-        if (!userId) return; // Don't fetch if we don't have a userId yet
+    useFocusEffect(
+        useCallback(() => {
+            const fetchData = async () => {
+                if (!userId) return;
 
-        try {
-            setIsLoading(true);
+                try {
+                    setIsLoading(true);
 
-            const dateString = selectedDate.toISOString().split('T')[0];
+                    const dateString = selectedDate.toISOString().split('T')[0];
 
-            // Fetch user's protein calorie target
-            const { data: userData, error: userError } = await supabase
-                .from('users')
-                .select('daily_protein_calorie_target')
-                .eq('id', userId)
-                .single();
+                    // Fetch user's protein calorie target
+                    const { data: userData, error: userError } = await supabase
+                        .from('users')
+                        .select('daily_protein_calorie_target')
+                        .eq('id', userId)
+                        .single();
 
-            if (userError) {
-                console.error('Error fetching user data:', userError);
-                return;
-            }
+                    if (userError) {
+                        console.error('Error fetching user data:', userError);
+                        return;
+                    }
 
-            // Fetch daily summary for water and exercise
-            const { data: summaryData, error: summaryError } = await supabase
-                .from('daily_summaries')
-                .select('water_intake, exercise_summary')
-                .eq('user_id', userId)
-                .eq('date', dateString)
-                .single();
+                    // Fetch daily summary for water and exercise
+                    const { data: summaryData, error: summaryError } = await supabase
+                        .from('daily_summaries')
+                        .select('water_intake, exercise_summary')
+                        .eq('user_id', userId)
+                        .eq('date', dateString)
+                        .single();
 
-            if (summaryError && summaryError.code !== 'PGRST116') {
-                console.error('Error fetching summary data:', summaryError);
-            }
+                    if (summaryError && summaryError.code !== 'PGRST116') {
+                        console.error('Error fetching summary data:', summaryError);
+                    }
 
-            // Set water intake from summary data if it exists
-            if (summaryData) {
-                setWaterIntake(summaryData.water_intake || 0);
-            }
+                    // Set water intake and exercise summary from summary data if it exists
+                    if (summaryData) {
+                        setWaterIntake(summaryData.water_intake || 0);
+                        setExerciseSummary(summaryData.exercise_summary || '');
+                    } else {
+                        setWaterIntake(0);
+                        setExerciseSummary('');
+                    }
 
-            // Fetch daily food log
-            const { data: logData, error: logError } = await supabase
-                .from('daily_food_logs')
-                .select('*')
-                .eq('user_id', userId)
-                .eq('date', dateString)
-                .single();
+                    // Fetch daily food log
+                    const { data: logData, error: logError } = await supabase
+                        .from('daily_food_logs')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .eq('date', dateString)
+                        .single();
 
-            if (logError && logError.code !== 'PGRST116') {
-                console.error('Error fetching daily log:', logError);
-                return;
-            }
+                    if (logError && logError.code !== 'PGRST116') {
+                        console.error('Error fetching daily log:', logError);
+                        return;
+                    }
 
-            // Fetch meals with their associated food items
-            const { data: meals, error: mealsError } = await supabase
-                .from('meals')
-                .select(`
-                    id,
-                    type,
-                    time,
-                    food_items (
-                        id,
-                        name,
-                        servings
-                    )
-                `)
-                .eq('user_id', userId)
-                .eq('date', dateString)
-                .order('time', { ascending: true });
+                    // Fetch meals with their associated food items
+                    const { data: meals, error: mealsError } = await supabase
+                        .from('meals')
+                        .select(`
+                            id,
+                            type,
+                            time,
+                            food_items (
+                                id,
+                                name,
+                                servings
+                            )
+                        `)
+                        .eq('user_id', userId)
+                        .eq('date', dateString)
+                        .order('time', { ascending: true });
 
-            if (mealsError) {
-                console.error('Error fetching meals:', mealsError);
-                return;
-            }
+                    if (mealsError) {
+                        console.error('Error fetching meals:', mealsError);
+                        return;
+                    }
 
-            // Initialize log with default values if it doesn't exist
-            const log = logData || {
-                id: null,
-                user_id: userId,
-                date: dateString,
-                total_protein_calories: 0,
-                vegetable_servings: 0,
-                fruit_servings: 0
+                    // Initialize log with default values if it doesn't exist
+                    const log = logData || {
+                        id: null,
+                        user_id: userId,
+                        date: dateString,
+                        total_protein_calories: 0,
+                        vegetable_servings: 0,
+                        fruit_servings: 0
+                    };
+
+                    // Add water, exercise data, and goals
+                    setLogData({ 
+                        ...log, 
+                        meals: meals || [],
+                        water_intake: summaryData?.water_intake || 0,
+                        exercise_summary: summaryData?.exercise_summary || '',
+                        protein_calorie_allowance: userData?.daily_protein_calorie_target || 2000,
+                        vegetable_servings_goal: 2,  // Fixed value per diet plan specs
+                        fruit_servings_goal: 1       // Fixed value per diet plan specs
+                    });
+
+                } catch (error) {
+                    console.error('Error in fetchLogData:', error);
+                } finally {
+                    setIsLoading(false);
+                }
             };
 
-            // Add water, exercise data, and goals
-            setLogData({ 
-                ...log, 
-                meals: meals || [],
-                water_intake: summaryData?.water_intake || 0,
-                exercise_summary: summaryData?.exercise_summary || '',
-                protein_calorie_allowance: userData?.daily_protein_calorie_target || 2000,
-                vegetable_servings_goal: 2,  // Fixed value per diet plan specs
-                fruit_servings_goal: 1       // Fixed value per diet plan specs
-            });
-
-        } catch (error) {
-            console.error('Error in fetchLogData:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    // Update data when screen is focused
-    useEffect(() => {
-        if (userId) {
-            fetchLogData();
-        }
-    }, [userId, selectedDate]);
-
-    // Also fetch when route.params.refresh changes
-    useEffect(() => {
-        if (route.params?.refresh) {
-            fetchLogData();
-            // Reset the refresh param
-            navigation.setParams({ refresh: false });
-        }
-    }, [route.params?.refresh, fetchLogData]);
+            fetchData();
+        }, [userId, selectedDate])
+    );
 
     const showDatePicker = () => {
         setDatePickerVisibility(true);
@@ -499,6 +518,7 @@ const LogScreen = ({ navigation, route }) => {
         // Reset states for the new date
         setLogData(null);
         setWaterIntake(0);
+        setExerciseSummary('');
         // Fetch data for the new date will happen via useEffect
     };
 
@@ -538,12 +558,12 @@ const LogScreen = ({ navigation, route }) => {
             }
 
             // Refresh the log data
-            await fetchLogData();
+            await fetchData();
         } catch (error) {
             console.error('Error:', error);
             Alert.alert('Error', 'An unexpected error occurred');
         }
-    }, [fetchLogData]);
+    }, []);
 
     const handleUpdateMeal = useCallback(async (updatedMeal) => {
         try {
@@ -568,12 +588,12 @@ const LogScreen = ({ navigation, route }) => {
             setIsEditModalVisible(false);
             setSelectedMeal(null);
             // Refresh the log data
-            await fetchLogData();
+            await fetchData();
         } catch (error) {
             console.error('Error:', error);
             Alert.alert('Error', 'An unexpected error occurred');
         }
-    }, [fetchLogData]);
+    }, []);
 
     const handleAddWater = async () => {
         if (isSubmitting || !userId) return;
