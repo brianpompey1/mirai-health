@@ -22,7 +22,7 @@ const ProfileScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
   const [currentWeight, setCurrentWeight] = useState(0); // Initialize to 0
-  const [goalWeight, setGoalWeight] = useState(150); //  Make dynamic later
+  const [goalWeight, setGoalWeight] = useState(0); //  Make dynamic later
   const [startWeight, setStartWeight] = useState(0);  // Initialize to 0
   const [lastWeight, setLastWeight] = useState(0);
   const [currentDietPlan, setCurrentDietPlan] = useState(null); // Initialize as null
@@ -66,7 +66,7 @@ const ProfileScreen = ({ navigation, route }) => {
       // Fetch user profile data
       const { data: profileData, error: profileError } = await supabase
         .from('users')
-        .select('first_name, profile_picture, start_weight')
+        .select('first_name, profile_picture, start_weight, goal_weight')
         .eq('id', user.id)
         .single();
 
@@ -77,6 +77,9 @@ const ProfileScreen = ({ navigation, route }) => {
         setProfilePicture(profileData.profile_picture);
         if (profileData.start_weight) {
           setStartWeight(profileData.start_weight);
+        }
+        if (profileData.goal_weight) {
+          setGoalWeight(profileData.goal_weight);
         }
       }
 

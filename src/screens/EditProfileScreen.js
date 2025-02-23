@@ -128,8 +128,7 @@ const EditProfileScreen = ({ navigation }) => {
           email: email,
           phone: phone,
           profile_picture: profilePicture,
-          start_weight: parseFloat(startWeight) || null,  // Convert to number, handle empty string
-          // Don't include passwords here
+          // Removed start_weight from updates since it should not be editable
       };
 
 
@@ -253,12 +252,13 @@ const EditProfileScreen = ({ navigation }) => {
               backgroundColor: theme.inputBackground,
               color: theme.text,
               borderColor: theme.border,
-              borderWidth: 1
+              borderWidth: 1,
+              opacity: 0.7  // Add opacity to visually indicate it's disabled
             }
           ]}
           value={startWeight}
-          onChangeText={setStartWeight}
-          placeholder="Enter your starting weight"
+          editable={false}  // Make the field read-only
+          placeholder="Starting weight"
           placeholderTextColor={theme.textSecondary}
           keyboardType="numeric"
         />
