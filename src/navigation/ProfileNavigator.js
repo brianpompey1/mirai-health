@@ -41,7 +41,7 @@ const ProfileNavigator = () => {
   return (
     <ProfileStack.Navigator screenOptions={headerOptions}>
       <ProfileStack.Screen
-        name="ProfileHome"
+        name="Profile"
         component={ProfileScreen}
         options={{ headerShown: false }}
       />

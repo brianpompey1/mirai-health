@@ -383,7 +383,7 @@ const ProfileScreen = ({ navigation, route }) => {
                     style={[styles.actionButton, { backgroundColor: theme.touchableBackground }]}
                     onPress={() => handleCancel(appointment.id)}
                   >
-                    <Text style={[styles.actionButtonText, { color: theme.danger }]}>Cancel</Text>
+                    <Text style={[styles.actionButtonText, { color: 'red' }]}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={[styles.actionButton, { backgroundColor: theme.touchableBackground }]}

@@ -166,7 +166,14 @@ const RescheduleAppointmentScreen = ({ navigation, route }) => {
         <Text style={[styles.label, { color: theme.text }]}>Reschedule Appointment</Text>
         
         <TouchableOpacity 
-          style={[styles.pickerButton, { backgroundColor: theme.touchableBackground }]} 
+          style={[
+            styles.pickerButton,
+            { 
+              backgroundColor: theme.touchableBackground,
+              borderColor: theme.border,
+              borderWidth: 1
+            }
+          ]} 
           onPress={showDatePicker}
         >
           <Text style={[styles.pickerButtonText, { color: theme.text }]}>{formatDate(selectedDate)}</Text>
@@ -174,7 +181,14 @@ const RescheduleAppointmentScreen = ({ navigation, route }) => {
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.pickerButton, { backgroundColor: theme.touchableBackground }]} 
+          style={[
+            styles.pickerButton,
+            { 
+              backgroundColor: theme.touchableBackground,
+              borderColor: theme.border,
+              borderWidth: 1
+            }
+          ]} 
           onPress={showTimePicker}
         >
           <Text style={[styles.pickerButtonText, { color: theme.text }]}>{formatTime(selectedTime)}</Text>
@@ -196,11 +210,11 @@ const RescheduleAppointmentScreen = ({ navigation, route }) => {
         />
 
         <TouchableOpacity 
-          style={[styles.submitButton, { backgroundColor: theme.buttonBackground }]}
+          style={[styles.submitButton, { backgroundColor: theme.actionButton }]}
           onPress={handleRescheduleSubmit}
           disabled={loading}
         >
-          <Text style={[styles.submitButtonText, { color: theme.primary }]}>
+          <Text style={[styles.submitButtonText, { color: theme.actionButtonText }]}>
             {loading ? 'Rescheduling...' : 'Confirm Reschedule'}
           </Text>
         </TouchableOpacity>
@@ -251,9 +265,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 15,
-    borderRadius: 8,
+    padding: 12,
     marginBottom: 15,
+    borderRadius: 8,
   },
   pickerButtonText: {
     fontSize: 16,
