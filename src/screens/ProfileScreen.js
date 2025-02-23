@@ -241,9 +241,29 @@ const ProfileScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      {/* <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('MessageCenter')}
+          style={styles.messageIcon}
+        >
+          <Ionicons name="mail" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.settingsButton} 
+          onPress={() => navigation.navigate('Settings')}
+        >
+          <Ionicons name="settings-outline" size={24} color={theme.text} />
+        </TouchableOpacity>
+      </View> */}
       <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={[styles.topSection, { backgroundColor: theme.background }]}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('MessageCenter')}
+          style={styles.messageIcon}
+        >
+          <Ionicons name="mail" size={24} color={theme.text} />
+        </TouchableOpacity>
           <View style={[styles.settingsPlaceholder, { backgroundColor: theme.background }]} />
           <View style={[styles.profileInfo, { backgroundColor: theme.background }]}>
             <Image
@@ -432,6 +452,19 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  messageIcon: {
+    padding: 5,
+  },
+  settingsButton: {
+    padding: 5,
+  },
   topSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -443,22 +476,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
-  },
   headerText: {
     fontSize: 20,
     fontFamily: 'sans-serif-medium',
   },
   settingsPlaceholder: {
     width: 34,
-  },
-  settingsButton: {
-    padding: 5,
   },
   profileImage: {
     width: 100,
