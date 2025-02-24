@@ -67,7 +67,7 @@ const RecipeCard = ({ recipe, style, onPress }) => {
                                 color="#9F8FFF"
                             />
                             <Text style={[styles.difficultyText, { color: theme.textSecondary }]}>
-                                {recipe.difficulty.charAt(0).toUpperCase() + recipe.difficulty.slice(1)}
+                                {recipe.difficulty ? recipe.difficulty.charAt(0).toUpperCase() + recipe.difficulty.slice(1) : 'Easy'}
                             </Text>
                         </View>
                         

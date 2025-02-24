@@ -12,6 +12,11 @@ import { useTheme } from '../contexts/ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ExerciseItem from '../components/ExerciseItem';
 
+const getLocalDateString = (date) => {
+  const d = new Date(date);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+};
+
 const DashboardScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [userName, setUserName] = useState('');
@@ -87,7 +92,7 @@ const DashboardScreen = ({ navigation }) => {
     if (!userId) return;
     
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString(new Date());
       
       // Fetch daily summary
       const { data: summaryData, error: summaryError } = await supabase
@@ -102,17 +107,29 @@ const DashboardScreen = ({ navigation }) => {
         return;
       }
 
-      // Update water intake
-      if (summaryData?.water_intake !== undefined) {
-        setWaterIntake(summaryData.water_intake);
+      // Update water intake and calorie goal
+      if (summaryData) {
+        setWaterIntake(summaryData.water_intake || 0);
+        setCalorieGoal(summaryData.calorie_goal || 2004);
+        setWaterGoal(summaryData.water_goal || 64);
       }
 
-      // Update exercise summary
-      if (summaryData?.exercise_summary) {
-        setExerciseSummary(summaryData.exercise_summary);
-      } else {
-        setExerciseSummary('');
+      // First get the food items to calculate calories
+      const { data: foodItemsData, error: foodError } = await supabase
+        .from('food_items')
+        .select('id, calories_per_serving, protein_per_serving')
+        .eq('category', 'protein');
+
+      if (foodError) {
+        console.error('Error fetching food items:', foodError);
+        return;
       }
+
+      // Create a map of food item calories
+      const foodCalories = {};
+      foodItemsData?.forEach(item => {
+        foodCalories[item.id] = item.calories_per_serving || 0;
+      });
 
       // Fetch meals with their food items using a join
       const { data: mealsData, error: mealsError } = await supabase
@@ -135,15 +152,26 @@ const DashboardScreen = ({ navigation }) => {
         return;
       }
 
-      // Transform the meals data to match the expected format
+      // Transform the meals data and calculate calories
       const transformedMeals = mealsData?.map(meal => ({
         id: meal.id,
         type: meal.type,
         time: meal.time,
-        foodItems: meal.food_items || []
+        foodItems: meal.food_items?.map(item => ({
+          ...item,
+          calories: (foodCalories[item.id] || 0) * (item.servings || 1)
+        })) || []
       })) || [];
 
       setMeals(transformedMeals);
+
+      // Calculate total calories consumed
+      const totalCalories = transformedMeals.reduce((total, meal) => {
+        return total + (meal.foodItems?.reduce((mealTotal, food) => 
+          mealTotal + (food.calories || 0), 0) || 0);
+      }, 0);
+
+      setCaloriesConsumed(Math.round(totalCalories));
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -159,7 +187,7 @@ const DashboardScreen = ({ navigation }) => {
     if (!userId) return;
 
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString(new Date());
       
       // If we've already fetched water intake today, skip the fetch
       if (lastWaterFetchDate === today) {
@@ -193,7 +221,7 @@ const DashboardScreen = ({ navigation }) => {
         if (!userId) return;
 
         try {
-          const today = new Date().toISOString().split('T')[0];
+          const today = getLocalDateString(new Date());
           
           // Fetch daily summary for water intake and exercise
           const { data: summaryData, error: summaryError } = await supabase
@@ -274,7 +302,7 @@ const DashboardScreen = ({ navigation }) => {
       setWaterIntake(newWaterIntake);
       
       // First check if there's an existing record for today
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString(new Date());
       const { data: existingData, error: fetchError } = await supabase
         .from('daily_summaries')
         .select('*')
@@ -319,7 +347,7 @@ const DashboardScreen = ({ navigation }) => {
       setWaterIntake(newWaterIntake);
       
       // First check if there's an existing record for today
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString(new Date());
       const { data: existingData, error: fetchError } = await supabase
         .from('daily_summaries')
         .select('*')
@@ -360,7 +388,7 @@ const DashboardScreen = ({ navigation }) => {
     
     try {
       setIsSubmitting(true);
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString(new Date());
       
       // First get the current exercise summary
       const { data: summaryData, error: fetchError } = await supabase
@@ -427,7 +455,7 @@ const DashboardScreen = ({ navigation }) => {
         .upsert(
           {
             user_id: userId,
-            date: new Date().toISOString().split('T')[0],
+            date: getLocalDateString(new Date()),
             total_calories: caloriesConsumed,
             water_intake: Math.round(waterIntake), // Round to nearest integer
           },
@@ -486,7 +514,7 @@ const DashboardScreen = ({ navigation }) => {
 
   const handleDeleteExercise = async (exercise) => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString(new Date());
       
       // Get current exercise summary
       const { data: summaryData, error: fetchError } = await supabase
