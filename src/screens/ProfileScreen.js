@@ -58,7 +58,9 @@ const ProfileScreen = ({ navigation, route }) => {
         console.error('Error fetching appointments:', appointmentsError);
       } else if (appointmentsData) {
         const upcoming = appointmentsData.filter(apt => apt.date_time > now);
-        const past = appointmentsData.filter(apt => apt.date_time <= now);
+        const past = appointmentsData
+          .filter(apt => apt.date_time <= now)
+          .sort((a, b) => new Date(b.date_time) - new Date(a.date_time)); // Sort past appointments in descending order
         setUpcomingAppointments(upcoming);
         setPastAppointments(past);
       }
