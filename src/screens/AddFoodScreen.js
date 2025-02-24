@@ -16,7 +16,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 const AddFoodScreen = ({ navigation, route }) => {
   const params = route.params || {};
-  const { editMode, mealId, mealType: initialMealType, mealTime: initialMealTime, foodItems: initialFoodItems } = params;
+  const { editMode, mealId, mealType: initialMealType, mealTime: initialMealTime, foodItems: initialFoodItems, selectedDate } = params;
   
   const [mealType, setMealType] = useState(initialMealType || '');
   const [mealTime, setMealTime] = useState(initialMealTime || '');
@@ -27,6 +27,14 @@ const AddFoodScreen = ({ navigation, route }) => {
   const [servings, setServings] = useState('');
   const [foodItems, setFoodItems] = useState(initialFoodItems || []);
   const { theme } = useTheme();
+
+  const getLocalDateString = (dateStr) => {
+    const date = new Date(dateStr);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   useEffect(() => {
     // Set navigation title based on mode
@@ -78,14 +86,15 @@ const AddFoodScreen = ({ navigation, route }) => {
   };
 
   const checkDailyLimits = async (category, servingsToAdd) => {
-    const date = new Date().toISOString().split('T')[0];
     const { data: { user } } = await supabase.auth.getUser();
+    
+    const date = selectedDate || new Date().toISOString().split('T')[0];
     
     const { data, error } = await supabase
       .from('daily_food_logs')
       .select('vegetable_servings, fruit_servings')
       .eq('user_id', user.id)
-      .eq('date', date)
+      .eq('date', getLocalDateString(date))
       .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
@@ -96,41 +105,47 @@ const AddFoodScreen = ({ navigation, route }) => {
     const currentFruitServings = data?.fruit_servings || 0;
 
     if (category === 'vegetable' && currentVegServings + servingsToAdd > 2) {
-      throw new Error('You have reached your daily limit of 2 vegetable servings');
+      Alert.alert('Warning', `Adding this will exceed your daily limit of 2 vegetable servings. Current: ${currentVegServings}, Adding: ${servingsToAdd}`);
+      return true; // Return true to indicate the warning was shown
     }
     if (category === 'fruit' && currentFruitServings + servingsToAdd > 1) {
-      throw new Error('You have reached your daily limit of 1 fruit serving');
+      Alert.alert('Warning', `Adding this will exceed your daily limit of 1 fruit serving. Current: ${currentFruitServings}, Adding: ${servingsToAdd}`);
+      return true; // Return true to indicate the warning was shown
     }
+    return false; // Return false to indicate no limits were exceeded
   };
 
-  const handleAddFoodItem = () => {
+  const handleAddFoodItem = async () => {
     if (!selectedFood || !servings || isNaN(servings)) {
       Alert.alert('Error', 'Please select a food and enter valid servings');
       return;
     }
 
-    const newFoodItem = {
-      id: selectedFood.id,
-      name: selectedFood.name,
-      servings: parseFloat(servings),
-      category: selectedFood.category
-    };
+    try {
+      // Check limits but don't prevent adding
+      await checkDailyLimits(selectedFood.category, parseFloat(servings));
+      
+      const newFoodItem = {
+        id: selectedFood.id,
+        name: selectedFood.name,
+        servings: parseFloat(servings),
+        category: selectedFood.category
+      };
 
-    setFoodItems([...foodItems, newFoodItem]);
-    setSelectedFood(null);
-    setSearchTerm('');
-    setServings('');
-    setSearchResults([]);
+      setFoodItems([...foodItems, newFoodItem]);
+      setSelectedFood(null);
+      setSearchTerm('');
+      setServings('');
+      setSearchResults([]);
+    } catch (error) {
+      console.error('Error checking daily limits:', error);
+      Alert.alert('Error', 'Failed to check daily limits');
+    }
   };
 
   const handleSave = async () => {
     if (!mealType) {
       Alert.alert('Error', 'Please enter a meal type');
-      return;
-    }
-
-    if (!mealTime) {
-      Alert.alert('Error', 'Please enter a meal time');
       return;
     }
 
@@ -143,11 +158,18 @@ const AddFoodScreen = ({ navigation, route }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
+      // If no time is specified, use current time in HH:mm format
+      const currentTime = new Date().toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+      });
+
       const mealData = {
         type: mealType,
-        time: mealTime,
+        time: mealTime || currentTime,
         user_id: user.id,
-        date: new Date().toISOString().split('T')[0]
+        date: selectedDate ? getLocalDateString(selectedDate) : getLocalDateString(new Date().toISOString())
       };
 
       let mealId = route.params?.mealId;

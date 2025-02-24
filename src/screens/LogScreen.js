@@ -24,274 +24,6 @@ const styles = StyleSheet.create({
     },
     contentContainer: {
         paddingBottom: 30,
-        paddingHorizontal: 16,
-    },
-    header: {
-        paddingVertical: 15,
-        marginBottom: 15,
-        marginHorizontal: 15,
-        borderRadius: 10,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    dateButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 10,
-        borderRadius: 10,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    dateText: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginRight: 10,
-    },
-    mealsContainer: {
-        padding: 15,
-        borderRadius: 10,
-        marginBottom: 15,
-        marginHorizontal: 15,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 15,
-    },
-    mealContainer: {
-        borderRadius: 8,
-        marginBottom: 15,
-        padding: 10,
-    },
-    mealHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    mealType: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    mealTime: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    foodItemContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: 5,
-    },
-    foodItemName: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    foodItemDetails: {
-        fontSize: 14,
-    },
-    emptyState: {
-        padding: 20,
-        borderRadius: 10,
-        alignItems: 'center',
-    },
-    emptyStateText: {
-        fontSize: 16,
-        marginBottom: 10,
-    },
-    addMealButton: {
-        backgroundColor: '#007AFF',
-        padding: 10,
-        borderRadius: 5,
-        width: '100%',
-        marginTop: 10,
-    },
-    addMealButtonText: {
-        color: 'white',
-        fontSize: 16,
-        textAlign: 'center',
-        fontWeight: '600',
-    },
-    summaryContainer: {
-        borderRadius: 8,
-        padding: 15,
-        marginHorizontal: 15,
-        marginBottom: 15,
-    },
-    summaryTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
-    summaryRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    summaryText: {
-        fontSize: 16,
-    },
-    rightActions: {
-        flexDirection: 'row',
-        width: 120,
-        height: '100%',
-    },
-    rightAction: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#FF3B30',
-    },
-    editAction: {
-        backgroundColor: '#4A90E2',
-    },
-    deleteAction: {
-        backgroundColor: '#FF3B30',
-    },
-    actionText: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    summarySection: {
-        padding: 15,
-        borderRadius: 10,
-        marginBottom: 15,
-        marginHorizontal: 15,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    exerciseSection: {
-        padding: 15,
-        borderRadius: 10,
-        marginBottom: 15,
-        marginHorizontal: 15,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    exerciseTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
-    exerciseText: {
-        fontSize: 16,
-    },
-    progressContainer: {
-        marginVertical: 8,
-    },
-    progressLabelContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 4,
-    },
-    progressLabel: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    progressValue: {
-        fontSize: 16,
-    },
-    progressBar: {
-        height: 8,
-        borderRadius: 4,
-        overflow: 'hidden',
-    },
-    progressFill: {
-        height: '100%',
-        borderRadius: 4,
-    },
-    waterContainer: {
-        alignItems: 'center',
-        width: '100%',
-    },
-    waterText: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 12,
-        textAlign: 'center',
-    },
-    waterProgressContainer: {
-        width: '100%',
-        alignItems: 'center',
-    },
-    waterProgressBackground: {
-        width: '100%',
-        height: 12,
-        backgroundColor: '#E6F3FF',
-        borderRadius: 6,
-        overflow: 'hidden',
-    },
-    waterProgressFill: {
-        height: '100%',
-        backgroundColor: '#2196F3',
-        borderRadius: 6,
-    },
-    waterRemainingText: {
-        fontSize: 14,
-        color: '#666',
-        marginTop: 8,
-        textAlign: 'center',
-    },
-    waterControls: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    waterButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#2196F3',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginHorizontal: 4,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    waterButtonText: {
-        color: 'white',
-        fontSize: 24,
-        fontWeight: '500',
-        lineHeight: 24,
-        textAlign: 'center',
     },
     dateNavigation: {
         flexDirection: 'row',
@@ -321,9 +53,9 @@ const styles = StyleSheet.create({
     dateButtonDisabled: {
         opacity: 0.5,
     },
-    dateButtonText: {
-        fontSize: 24,
-        fontWeight: '500',
+    dateText: {
+        fontSize: 18,
+        fontWeight: '600',
     },
     dateTouchable: {
         flexDirection: 'row',
@@ -334,58 +66,43 @@ const styles = StyleSheet.create({
     calendarIcon: {
         marginLeft: 4,
     },
-    summaryHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 5,
+    mealsContainer: {
+        padding: 15,
+        borderRadius: 10,
+        marginBottom: 15,
+        marginHorizontal: 15,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 3,
     },
-    summaryLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    summaryValue: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    exerciseSummary: {
-        fontSize: 16,
-        marginTop: 5,
-        lineHeight: 22,
-    },
-    noExercise: {
-        fontSize: 16,
-        fontStyle: 'italic',
-        marginTop: 5,
-    },
-    completeButtonContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(0, 0, 0, 0.1)',
-    },
-    completeButton: {
-        width: '100%',
-        height: 48,
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-    },
-    completeButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
+    exerciseContainer: {
+        padding: 15,
+        borderRadius: 10,
+        marginBottom: 15,
+        marginHorizontal: 15,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 3,
     },
     sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        marginBottom: 15,
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
     },
     addButton: {
         paddingHorizontal: 12,
@@ -400,11 +117,98 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         padding: 16,
         fontSize: 14,
+        fontStyle: 'italic',
+    },
+    summarySection: {
+        padding: 15,
+        borderRadius: 10,
+        marginBottom: 15,
+        marginHorizontal: 15,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    progressContainer: {
+        marginVertical: 8,
+    },
+    progressLabelContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    progressLabel: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    progressValue: {
+        fontSize: 16,
+    },
+    progressBar: {
+        height: 8,
+        borderRadius: 4,
+        overflow: 'hidden',
+    },
+    progressFill: {
+        height: '100%',
+        borderRadius: 4,
+    },
+    waterContainer: {
+        alignItems: 'center',
+        width: '100%',
+        marginTop: 15,
+    },
+    waterText: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    waterProgressContainer: {
+        width: '100%',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    waterProgressBackground: {
+        width: '100%',
+        height: 12,
+        backgroundColor: '#E6F3FF',
+        borderRadius: 6,
+        overflow: 'hidden',
+    },
+    waterProgressFill: {
+        height: '100%',
+        backgroundColor: '#2196F3',
+        borderRadius: 6,
+    },
+    waterControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 10,
+    },
+    waterButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#2196F3',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginHorizontal: 8,
+    },
+    waterButtonText: {
+        color: 'white',
+        fontSize: 24,
+        fontWeight: '500',
+        lineHeight: 24,
     },
     rightActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: 8,
         marginRight: 16,
     },
     rightAction: {
@@ -412,6 +216,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: 60,
         height: '100%',
+        borderRadius: 8,
     },
     editAction: {
         backgroundColor: '#4A90E2',
@@ -420,18 +225,17 @@ const styles = StyleSheet.create({
     deleteAction: {
         backgroundColor: '#FF3B30',
     },
-    actionText: {
-        color: 'white',
-        fontSize: 14,
-        fontWeight: '600',
-    },
     mealItemContainer: {
-        marginBottom: 8,
+        marginBottom: 12,
+        borderRadius: 8,
+        overflow: 'hidden',
     },
     exerciseItemContainer: {
-        marginBottom: 8,
+        marginBottom: 12,
+        borderRadius: 8,
+        overflow: 'hidden',
     },
-    modalOverlay: {
+    modalContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
@@ -439,6 +243,7 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         width: '90%',
+        backgroundColor: 'white',
         borderRadius: 15,
         padding: 20,
         shadowColor: '#000',
@@ -479,8 +284,16 @@ const styles = StyleSheet.create({
     saveButtonText: {
         fontSize: 16,
         fontWeight: '600',
-    },
+        color: 'white',
+    }
 });
+
+const getLocalDateString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 const LogScreen = ({ navigation, route }) => {
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -559,30 +372,27 @@ const LogScreen = ({ navigation, route }) => {
         if (!userId) return;
         
         try {
-            const dateString = selectedDate.toISOString().split('T')[0];
+            setIsLoading(true);
+            const dateString = getLocalDateString(selectedDate);
             
-            // Fetch meals
+            console.log('Fetching meals for date:', dateString);
+            
+            // Fetch meals with their food items
             const { data: mealsData, error: mealsError } = await supabase
                 .from('meals')
-                .select(`
-                    id,
-                    type,
-                    time,
-                    food_items!meal_id (
-                        id,
-                        name,
-                        servings
-                    )
-                `)
+                .select('*, food_items(*)')
                 .eq('user_id', userId)
-                .eq('date', dateString);
+                .eq('date', dateString)
+                .order('time', { ascending: true });
 
             if (mealsError) {
                 console.error('Error fetching meals:', mealsError);
                 return;
             }
 
-            // Calculate vegetable and fruit servings
+            console.log('Fetched meals:', mealsData);
+
+            // Calculate totals
             let totalVegetableServings = 0;
             let totalFruitServings = 0;
             let totalProteinCalories = 0;
@@ -615,19 +425,41 @@ const LogScreen = ({ navigation, route }) => {
                 });
             });
 
-            // Transform meals data
+            // Transform meals data to match the expected format
             const transformedMeals = mealsData?.map(meal => ({
-                ...meal,
+                id: meal.id,
+                type: meal.type || 'Meal',
+                time: meal.time,
                 foodItems: meal.food_items || []
             })) || [];
+
+            console.log('Transformed meals:', transformedMeals);
 
             setMeals(transformedMeals);
             setTotalVegetableServings(totalVegetableServings);
             setTotalFruitServings(totalFruitServings);
             setCaloriesConsumed(totalProteinCalories);
+
+            // Fetch daily summary
+            const { data: summaryData, error: summaryError } = await supabase
+                .from('daily_summaries')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('date', dateString)
+                .single();
+
+            if (summaryError && summaryError.code !== 'PGRST116') {
+                console.error('Error fetching daily summary:', summaryError);
+            } else {
+                setWaterIntake(summaryData?.water_intake || 0);
+                setExerciseSummary(summaryData?.exercise_summary || '');
+            }
+
         } catch (error) {
             console.error('Error fetching data:', error);
             Alert.alert('Error', 'Failed to fetch data');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -637,78 +469,6 @@ const LogScreen = ({ navigation, route }) => {
 
     useFocusEffect(
         useCallback(() => {
-            const fetchData = async () => {
-                if (!userId) return;
-                
-                try {
-                    setIsLoading(true);
-                    const dateString = selectedDate.toISOString().split('T')[0];
-                    
-                    // Fetch meals with their food items
-                    const { data: mealsData, error: mealsError } = await supabase
-                        .from('meals')
-                        .select(`
-                            id,
-                            type,
-                            time,
-                            food_items (
-                                id,
-                                name,
-                                servings
-                            )
-                        `)
-                        .eq('user_id', userId)
-                        .eq('date', dateString)
-                        .order('time', { ascending: true });
-
-                    if (mealsError) {
-                        console.error('Error fetching meals:', mealsError);
-                    } else {
-                        const processedMeals = mealsData?.map(meal => ({
-                            id: meal.id,
-                            type: meal.type || 'Meal',
-                            time: meal.time,
-                            foodItems: meal.food_items || []
-                        })) || [];
-                        
-                        setMeals(processedMeals);
-                    }
-
-                    // Fetch daily summary for the selected date
-                    const { data: summaryData, error: summaryError } = await supabase
-                        .from('daily_summaries')
-                        .select('*')
-                        .eq('user_id', userId)
-                        .eq('date', dateString)
-                        .single();
-
-                    if (summaryError && summaryError.code !== 'PGRST116') {
-                        console.error('Error fetching daily summary:', summaryError);
-                    } else {
-                        setWaterIntake(summaryData?.water_intake || 0);
-                        setExerciseSummary(summaryData?.exercise_summary || '');
-                    }
-
-                    // Fetch daily food log for total calories
-                    const { data: logData, error: logError } = await supabase
-                        .from('daily_food_logs')
-                        .select('total_protein_calories')
-                        .eq('user_id', userId)
-                        .eq('date', dateString)
-                        .single();
-
-                    if (logError && logError.code !== 'PGRST116') {
-                        console.error('Error fetching daily log:', logError);
-                    } else {
-                        setCaloriesConsumed(logData?.total_protein_calories || 0);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-            
             fetchData();
         }, [userId, selectedDate])
     );
@@ -818,60 +578,31 @@ const LogScreen = ({ navigation, route }) => {
         setIsExerciseModalVisible(true);
     };
 
-    const handleDeleteExercise = async (exercise) => {
+    const handleDeleteExercise = async (index) => {
         try {
-            const dateString = selectedDate.toISOString().split('T')[0];
-            
-            // Get current exercise summary
-            const { data: summaryData, error: fetchError } = await supabase
+            const { data: { user } } = await supabase.auth.getUser();
+            const dateString = getLocalDateString(selectedDate);
+
+            const { data: existingSummary } = await supabase
                 .from('daily_summaries')
                 .select('*')
-                .eq('user_id', userId)
+                .eq('user_id', user.id)
                 .eq('date', dateString)
                 .single();
 
-            if (fetchError && fetchError.code !== 'PGRST116') {
-                console.error('Error fetching summary:', fetchError);
-                Alert.alert('Error', 'Failed to delete exercise');
-                return;
+            if (existingSummary) {
+                const exercises = existingSummary.exercise_summary.split(',').map(ex => ex.trim());
+                exercises.splice(index, 1);
+                const updatedExercises = exercises.join(',');
+
+                const { error: updateError } = await supabase
+                    .from('daily_summaries')
+                    .update({ exercise_summary: updatedExercises })
+                    .eq('id', existingSummary.id);
+
+                if (updateError) throw updateError;
+                fetchData(); // Refresh the data
             }
-
-            // Filter out the exercise to delete
-            const currentExercises = summaryData?.exercise_summary
-                ? summaryData.exercise_summary
-                    .split(',')
-                    .map(ex => ex.trim())
-                    .filter(ex => ex !== '')
-                : [];
-            
-            const updatedExercises = currentExercises.filter(ex => ex !== exercise.name);
-
-            // Update the daily summary
-            const { error: updateError } = await supabase
-                .from('daily_summaries')
-                .update({
-                    exercise_summary: updatedExercises.join(', '),
-                    water_intake: summaryData?.water_intake || 0,
-                    exercise_calories: summaryData?.exercise_calories || 0,
-                    total_protein_calories: summaryData?.total_protein_calories || 0,
-                    fruit_servings: summaryData?.fruit_servings || 0,
-                    vegetable_servings: summaryData?.vegetable_servings || 0,
-                    miscellaneous_servings: summaryData?.miscellaneous_servings || 0,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', summaryData.id);
-
-            if (updateError) {
-                console.error('Error updating summary:', updateError);
-                Alert.alert('Error', 'Failed to delete exercise');
-                return;
-            }
-
-            // Update local state immediately
-            setExerciseSummary(updatedExercises.join(', '));
-            
-            // Then refresh all data
-            fetchData();
         } catch (error) {
             console.error('Error deleting exercise:', error);
             Alert.alert('Error', 'Failed to delete exercise');
@@ -881,13 +612,13 @@ const LogScreen = ({ navigation, route }) => {
     const renderRightActions = (meal) => {
         return (
             <View style={styles.rightActions}>
-                <TouchableOpacity
+                <TouchableOpacity 
                     style={[styles.rightAction, styles.editAction]}
                     onPress={() => handleEditMeal(meal)}
                 >
                     <Ionicons name="pencil" size={24} color="white" />
                 </TouchableOpacity>
-                <TouchableOpacity
+                <TouchableOpacity 
                     style={[styles.rightAction, styles.deleteAction]}
                     onPress={() => handleDeleteMeal(meal.id)}
                 >
@@ -1050,7 +781,7 @@ const LogScreen = ({ navigation, route }) => {
             const newWaterIntake = waterIntake + WATER_INCREMENT;
             setWaterIntake(newWaterIntake);
             
-            const dateString = selectedDate.toISOString().split('T')[0];
+            const dateString = getLocalDateString(selectedDate);
             const { data: existingData, error: fetchError } = await supabase
                 .from('daily_summaries')
                 .select('id')
@@ -1094,7 +825,7 @@ const LogScreen = ({ navigation, route }) => {
             const newWaterIntake = Math.max(0, waterIntake - WATER_INCREMENT);
             setWaterIntake(newWaterIntake);
             
-            const dateString = selectedDate.toISOString().split('T')[0];
+            const dateString = getLocalDateString(selectedDate);
             const { data: existingData, error: fetchError } = await supabase
                 .from('daily_summaries')
                 .select('id')
@@ -1135,56 +866,53 @@ const LogScreen = ({ navigation, route }) => {
         
         try {
             setIsSubmitting(true);
-            const dateString = selectedDate.toISOString().split('T')[0];
+            const { data: { user } } = await supabase.auth.getUser();
+            const dateString = getLocalDateString(selectedDate);
             
-            // First get the current exercise summary
-            const { data: summaryData, error: fetchError } = await supabase
+            // Check if a summary exists for this date
+            const { data: existingSummary } = await supabase
                 .from('daily_summaries')
                 .select('*')
-                .eq('user_id', userId)
+                .eq('user_id', user.id)
                 .eq('date', dateString)
                 .single();
 
-            if (fetchError && fetchError.code !== 'PGRST116') {
-                console.error('Error fetching daily summary:', fetchError);
-                return;
-            }
+            if (existingSummary) {
+                // Update existing summary
+                const updatedExercises = existingSummary.exercise_summary
+                    ? editingExerciseId !== null
+                        ? existingSummary.exercise_summary
+                            .split(',')
+                            .map(ex => ex.trim())
+                            .map((ex, index) => index === editingExerciseId ? exercise : ex)
+                            .join(',')
+                        : `${existingSummary.exercise_summary}, ${exercise}`
+                    : exercise;
 
-            let currentExercises = summaryData?.exercise_summary
-                ? summaryData.exercise_summary.split(',').map(ex => ex.trim()).filter(ex => ex !== '')
-                : [];
+                const { error: updateError } = await supabase
+                    .from('daily_summaries')
+                    .update({ exercise_summary: updatedExercises })
+                    .eq('id', existingSummary.id);
 
-            if (editingExerciseId !== null) {
-                // If editing, replace the old exercise
-                const exerciseIndex = currentExercises.indexOf(editingExerciseId);
-                if (exerciseIndex !== -1) {
-                    currentExercises[exerciseIndex] = exercise.trim();
-                }
+                if (updateError) throw updateError;
             } else {
-                // If adding new, append to the list
-                currentExercises.push(exercise.trim());
+                // Create new summary
+                const { error: insertError } = await supabase
+                    .from('daily_summaries')
+                    .insert([{
+                        user_id: user.id,
+                        date: dateString,
+                        exercise_summary: exercise,
+                        water_intake: 0
+                    }]);
+
+                if (insertError) throw insertError;
             }
 
-            // Update the daily summary
-            const { error: updateError } = await supabase
-                .from('daily_summaries')
-                .upsert({
-                    id: summaryData?.id,
-                    user_id: userId,
-                    date: dateString,
-                    exercise_summary: currentExercises.join(', '),
-                    water_intake: summaryData?.water_intake || 0
-                });
-
-            if (updateError) throw updateError;
-
-            // Clear the input and close modal
             setExercise('');
             setEditingExerciseId(null);
             setIsExerciseModalVisible(false);
-            
-            // Refresh data
-            await fetchData();
+            fetchData(); // Refresh the data
         } catch (error) {
             console.error('Error saving exercise:', error);
             Alert.alert('Error', 'Failed to save exercise');
@@ -1204,7 +932,7 @@ const LogScreen = ({ navigation, route }) => {
                 setIsExerciseModalVisible(false);
             }}
         >
-            <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+            <View style={[styles.modalContainer, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
                 <View style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}>
                     <View style={styles.modalHeader}>
                         <Text style={[styles.modalTitle, { color: theme.text }]}>
@@ -1335,7 +1063,9 @@ const LogScreen = ({ navigation, route }) => {
                             <Text style={[styles.sectionTitle, { color: theme.text }]}>Meals</Text>
                             <TouchableOpacity
                                 style={[styles.addButton, { backgroundColor: theme.importantButton }]}
-                                onPress={() => navigation.navigate('AddFood')}
+                                onPress={() => navigation.navigate('AddFood', {
+                                    selectedDate: selectedDate.toISOString().split('T')[0]
+                                })}
                             >
                                 <Text style={[styles.addButtonText, { color: theme.importantButtonText }]}>
                                     + Add Meal
@@ -1379,7 +1109,7 @@ const LogScreen = ({ navigation, route }) => {
                                     <ExerciseItem
                                         exercise={{ id: index, name: exercise.trim() }}
                                         onEdit={handleEditExercise}
-                                        onDelete={handleDeleteExercise}
+                                        onDelete={() => handleDeleteExercise(index)}
                                     />
                                 </View>
                             ))
