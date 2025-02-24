@@ -1,23 +1,84 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
-const ArticleCard = ({ article }) => { // Receives an 'article' object as a prop
+const ArticleCard = ({ article, onPress, style }) => {
   const { theme } = useTheme();
+
+  const getCategoryIcon = (category) => {
+    switch (category) {
+      case 'nutrition':
+        return 'nutrition-outline';
+      case 'exercise':
+        return 'fitness-outline';
+      case 'motivation':
+        return 'trophy-outline';
+      case 'meal-planning':
+        return 'restaurant-outline';
+      case 'lifestyle':
+        return 'leaf-outline';
+      default:
+        return 'document-text-outline';
+    }
+  };
+
   return (
-    <TouchableOpacity 
-      style={[styles.container, { 
-        backgroundColor: theme.cardBackground,
-        borderColor: theme.border,
-      }]} 
-      onPress={() => { /* TODO: Handle navigation to article details */ }}
+    <TouchableOpacity
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.cardBackground,
+          borderColor: theme.border,
+        },
+        style
+      ]}
+      onPress={onPress}
     >
       <View style={styles.content}>
-        <Text style={[styles.title, { color: theme.text }]}>{article.title}</Text>
-        <Text style={[styles.excerpt, { color: theme.text }]}>{article.excerpt}</Text>
-      </View>
-      <View style={[styles.footer, { backgroundColor: theme.touchableBackground }]}>
-        <Text style={[styles.readMore, { color: theme.primary }]}>Read More</Text>
+        <View style={styles.header}>
+          <View style={styles.categoryContainer}>
+            <Ionicons
+              name={getCategoryIcon(article.category)}
+              size={20}
+              color={theme.text}
+            />
+            <Text style={[styles.category, { color: theme.text }]}>
+              {article.category.charAt(0).toUpperCase() + article.category.slice(1)}
+            </Text>
+          </View>
+          <Text style={[styles.title, { color: theme.text }]}>
+            {article.title}
+          </Text>
+        </View>
+
+        <Text
+          style={[styles.excerpt, { color: theme.textSecondary }]}
+          numberOfLines={3}
+        >
+          {article.excerpt}
+        </Text>
+
+        <View style={styles.footer}>
+          <View style={styles.tags}>
+            {article.tags && article.tags.slice(0, 3).map((tag, index) => (
+              <View
+                key={index}
+                style={[styles.tag, { backgroundColor: theme.tagBackground }]}
+              >
+                <Text style={[styles.tagText, { color: theme.tagText }]}>
+                  {tag}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <View style={styles.readingTime}>
+            <Ionicons name="time-outline" size={16} color={theme.text} />
+            <Text style={[styles.readingTimeText, { color: theme.text }]}>
+              {article.reading_time} min read
+            </Text>
+          </View>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -26,37 +87,72 @@ const ArticleCard = ({ article }) => { // Receives an 'article' object as a prop
 const styles = StyleSheet.create({
   container: {
     borderRadius: 12,
-    marginBottom: 15,
+    marginBottom: 16,
     borderWidth: 1,
-    overflow: 'hidden',
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
   },
   content: {
-    padding: 15,
+    padding: 16,
+  },
+  header: {
+    marginBottom: 12,
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  category: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
   },
   title: {
     fontSize: 18,
-    fontFamily: 'sans-serif-medium',
-    marginBottom: 8,
+    fontWeight: '600',
+    lineHeight: 24,
   },
   excerpt: {
     fontSize: 14,
-    fontFamily: 'sans-serif',
-    marginBottom: 4,
+    lineHeight: 20,
+    marginBottom: 12,
   },
   footer: {
-    padding: 12,
-    borderBottomLeftRadius: 6,
-    borderBottomRightRadius: 6,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  readMore: {
+  tags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    flex: 1,
+    marginRight: 8,
+  },
+  tag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 4,
+  },
+  tagText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  readingTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  readingTimeText: {
     fontSize: 14,
-    fontFamily: 'sans-serif-medium',
-    textAlign: 'center',
+    marginLeft: 4,
   },
 });
 

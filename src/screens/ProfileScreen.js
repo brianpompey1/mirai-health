@@ -22,7 +22,7 @@ const ProfileScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
   const [currentWeight, setCurrentWeight] = useState(0); // Initialize to 0
-  const [goalWeight, setGoalWeight] = useState(150); //  Make dynamic later
+  const [goalWeight, setGoalWeight] = useState(0); //  Make dynamic later
   const [startWeight, setStartWeight] = useState(0);  // Initialize to 0
   const [lastWeight, setLastWeight] = useState(0);
   const [currentDietPlan, setCurrentDietPlan] = useState(null); // Initialize as null
@@ -58,7 +58,9 @@ const ProfileScreen = ({ navigation, route }) => {
         console.error('Error fetching appointments:', appointmentsError);
       } else if (appointmentsData) {
         const upcoming = appointmentsData.filter(apt => apt.date_time > now);
-        const past = appointmentsData.filter(apt => apt.date_time <= now);
+        const past = appointmentsData
+          .filter(apt => apt.date_time <= now)
+          .sort((a, b) => new Date(b.date_time) - new Date(a.date_time)); // Sort past appointments in descending order
         setUpcomingAppointments(upcoming);
         setPastAppointments(past);
       }
@@ -66,7 +68,7 @@ const ProfileScreen = ({ navigation, route }) => {
       // Fetch user profile data
       const { data: profileData, error: profileError } = await supabase
         .from('users')
-        .select('first_name, profile_picture, assigned_diet_plan_id, start_weight')
+        .select('first_name, profile_picture, start_weight, goal_weight')
         .eq('id', user.id)
         .single();
 
@@ -76,33 +78,76 @@ const ProfileScreen = ({ navigation, route }) => {
         setUserName(profileData.first_name);
         setProfilePicture(profileData.profile_picture);
         if (profileData.start_weight) {
-          setStartWeight(profileData.start_weight); // Set start_weight
+          setStartWeight(profileData.start_weight);
         }
-
-        if (profileData.assigned_diet_plan_id) {
-          const { data: dietData, error: dietError } = await supabase
-            .from('diet_plans')
-            .select('*')
-            .eq('id', profileData.assigned_diet_plan_id)
-            .single();
-
-          if (!dietError && dietData) {
-            setCurrentDietPlan(dietData);
-          }
+        if (profileData.goal_weight) {
+          setGoalWeight(profileData.goal_weight);
         }
       }
 
-      // Fetch weight progress
-      const { data: weightData, error: weightError } = await supabase
-        .from('user_progress')
-        .select('date, weight')
+      // Fetch diet plan separately from user_diet_plans table
+      const { data: dietPlanData, error: dietPlanError } = await supabase
+        .from('user_diet_plans')
+        .select(`
+          diet_plans (
+            id,
+            name,
+            description,
+            daily_protein_calories,
+            daily_vegetable_servings,
+            daily_fruit_servings
+          )
+        `)
         .eq('user_id', user.id)
-        .order('date', { ascending: false });
+        .single();
 
-      if (!weightError && weightData && weightData.length > 0) {
-        setCurrentWeight(weightData[0].weight);
-        if (weightData.length > 1) {
-          setLastWeight(weightData[1].weight);
+      if (!dietPlanError && dietPlanData?.diet_plans) {
+        setCurrentDietPlan(dietPlanData.diet_plans);
+      }
+
+      // Fetch weight from most recent appointment that has notes
+      const { data: latestAppointment, error: appointmentError } = await supabase
+        .from('appointments')
+        .select('notes, date_time')
+        .eq('user_id', user.id)
+        .not('notes', 'is', null)  // Only get appointments with notes
+        .not('notes', 'eq', '')    // Exclude empty notes
+        .order('date_time', { ascending: false })
+        .limit(2);  // Get last 2 appointments to calculate change since last weigh-in
+
+      console.log('Latest Appointments:', latestAppointment); // Debug log
+
+      if (!appointmentError && latestAppointment && latestAppointment.length > 0) {
+        // Extract weight from notes using regex to match "Weight: XXX"
+        const currentNotes = latestAppointment[0].notes;
+        console.log('Current Notes:', currentNotes); // Debug log
+        
+        if (currentNotes) {
+          const weightMatch = currentNotes.match(/Weight:\s*(\d+)/);
+          console.log('Weight Match:', weightMatch); // Debug log
+          
+          if (weightMatch && weightMatch[1]) {
+            const weight = parseFloat(weightMatch[1]);
+            console.log('Parsed Weight:', weight); // Debug log
+            if (!isNaN(weight)) {
+              setCurrentWeight(weight);
+              console.log('Set Current Weight to:', weight); // Debug log
+            }
+          }
+        }
+
+        // Get previous weight for "Change Since Last Weigh-In"
+        if (latestAppointment.length > 1) {
+          const previousNotes = latestAppointment[1].notes;
+          if (previousNotes) {
+            const weightMatch = previousNotes.match(/Weight:\s*(\d+)/);
+            if (weightMatch && weightMatch[1]) {
+              const weight = parseFloat(weightMatch[1]);
+              if (!isNaN(weight)) {
+                setLastWeight(weight);
+              }
+            }
+          }
         }
       }
     } catch (error) {
@@ -226,16 +271,36 @@ const ProfileScreen = ({ navigation, route }) => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Loading...</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+        <Text style={{ color: theme.text }}>Loading...</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      {/* <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('MessageCenter')}
+          style={styles.messageIcon}
+        >
+          <Ionicons name="mail" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.settingsButton} 
+          onPress={() => navigation.navigate('Settings')}
+        >
+          <Ionicons name="settings-outline" size={24} color={theme.text} />
+        </TouchableOpacity>
+      </View> */}
       <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={[styles.topSection, { backgroundColor: theme.background }]}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('MessageCenter')}
+          style={styles.messageIcon}
+        >
+          <Ionicons name="mail" size={24} color={theme.text} />
+        </TouchableOpacity>
           <View style={[styles.settingsPlaceholder, { backgroundColor: theme.background }]} />
           <View style={[styles.profileInfo, { backgroundColor: theme.background }]}>
             <Image
@@ -255,25 +320,39 @@ const ProfileScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[styles.editProfileButton, {
-            backgroundColor: theme.buttonBackground,
-            borderColor: theme.border,
-          }]}
-          onPress={() => navigation.navigate('EditProfile')}
-        >
-          <Text style={[styles.editProfileButtonText, { color: theme.buttonText }]}>Edit Profile</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.appointmentButton, {
-            backgroundColor: theme.buttonBackground,
-            borderColor: theme.border,
-          }]}
-          onPress={() => navigation.navigate('RequestAppointment')} // Navigate to RequestAppointmentScreen
-        >
-          <Text style={[styles.appointmentButtonText, { color: theme.buttonText }]}>Request Appointment</Text>
-        </TouchableOpacity>
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              {
+                backgroundColor: theme.actionButton,
+                borderColor: theme.border,
+                marginRight: 8,
+              },
+            ]}
+            onPress={() => navigation.navigate('EditProfile')}
+          >
+            <Text style={[styles.actionButtonText, { color: theme.actionButtonText }]}>
+              Edit Profile
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              {
+                backgroundColor: theme.actionButton,
+                borderColor: theme.border,
+                marginLeft: 8,
+              },
+            ]}
+            onPress={() => navigation.navigate('RequestAppointment')}
+          >
+            <Text style={[styles.actionButtonText, { color: theme.actionButtonText }]}>
+              Request Appointment
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Weight Progress Section */}
         <View style={[styles.weightProgressSection, { backgroundColor: theme.cardBackground }]}>
@@ -307,7 +386,7 @@ const ProfileScreen = ({ navigation, route }) => {
         </View>
 
         {/* Diet Plan Section */}
-        <View style={[styles.dietPlanSection, { backgroundColor: theme.cardBackground }]}>
+        {/* <View style={[styles.dietPlanSection, { backgroundColor: theme.cardBackground }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Current Diet Plan</Text>
           {currentDietPlan ? (
             <>
@@ -337,7 +416,7 @@ const ProfileScreen = ({ navigation, route }) => {
           >
             <Text style={[styles.viewHistoryText, { color: theme.primary }]}>View Diet Plan History</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         {/* Upcoming Appointments */}
         <View style={[styles.appointmentsSection, { backgroundColor: theme.cardBackground }]}>
@@ -361,7 +440,7 @@ const ProfileScreen = ({ navigation, route }) => {
                     style={[styles.actionButton, { backgroundColor: theme.touchableBackground }]}
                     onPress={() => handleCancel(appointment.id)}
                   >
-                    <Text style={[styles.actionButtonText, { color: theme.danger }]}>Cancel</Text>
+                    <Text style={[styles.actionButtonText, { color: 'red' }]}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={[styles.actionButton, { backgroundColor: theme.touchableBackground }]}
@@ -410,6 +489,19 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  messageIcon: {
+    padding: 5,
+  },
+  settingsButton: {
+    padding: 5,
+  },
   topSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -421,22 +513,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'white',
-  },
   headerText: {
     fontSize: 20,
     fontFamily: 'sans-serif-medium',
   },
   settingsPlaceholder: {
     width: 34,
-  },
-  settingsButton: {
-    padding: 5,
   },
   profileImage: {
     width: 100,
@@ -454,29 +536,31 @@ const styles = StyleSheet.create({
     fontFamily: 'sans-serif',
     color: 'gray',
   },
-  editProfileButton: {
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    margin: 10,
-    elevation: 2,
+  actionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    marginVertical: 16,
   },
-  editProfileButtonText: {
-    fontSize: 18,
-    fontFamily: 'sans-serif-medium',
-    textAlign: 'center'
+  actionButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  appointmentButton: {
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    margin: 10,
-    elevation: 2,
-  },
-  appointmentButtonText: {
-    fontSize: 18,
-    fontFamily: 'sans-serif-medium',
-    textAlign: 'center'
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   appointmentsSection: {
     backgroundColor: 'white',
@@ -594,6 +678,25 @@ const styles = StyleSheet.create({
     marginTop: 10,
     alignItems: 'center',
   },
+  settingItem: {
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    margin: 10,
+    elevation: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  settingContent: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  settingText: {
+    fontSize: 16,
+    fontFamily: 'sans-serif-medium',
+    marginLeft: 10
+  }
 });
 
 export default ProfileScreen;

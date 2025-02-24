@@ -21,15 +21,15 @@ const SettingsScreen = ({navigation}) => { //Get navigation prop
     <ScrollView style={[styles.container, {backgroundColor: theme.background}]}>
       {/* <Text style={styles.title}>Settings</Text> */}
 
-      <View style={[styles.settingItem, {backgroundColor: theme.cardBackground}]}>
-        <Text style={[styles.settingText, {color: theme.text}]}>Dark Mode</Text>
-        <Switch
-          value={isDarkMode}
-          onValueChange={toggleTheme} // Use toggleTheme
-          trackColor={{ false: "#767577", true: "#81b0ff" }}
-          thumbColor={isDarkMode ? "#f5dd4b" : "#f4f3f4"}
-        />
-      </View>
+      <TouchableOpacity 
+        style={[styles.settingItem, {backgroundColor: theme.cardBackground}]}
+        onPress={() => navigation.navigate('ThemeSettings')}
+      >
+        <View style={styles.settingContent}>
+          <Text style={[styles.settingText, {color: theme.text}]}>Theme Settings</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={24} color={theme.text} />
+      </TouchableOpacity>
 
       {/* Preferred Contact Method */}
         <View style={[styles.settingSection, {backgroundColor: theme.cardBackground}]}>
@@ -190,6 +190,9 @@ const styles = StyleSheet.create({
       },
       selectedContactOptionText: {
         color: 'white'
+      },
+      settingContent: {
+        flex: 1
       }
 });
 

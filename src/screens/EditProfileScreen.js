@@ -128,8 +128,7 @@ const EditProfileScreen = ({ navigation }) => {
           email: email,
           phone: phone,
           profile_picture: profilePicture,
-          start_weight: parseFloat(startWeight) || null,  // Convert to number, handle empty string
-          // Don't include passwords here
+          // Removed start_weight from updates since it should not be editable
       };
 
 
@@ -171,8 +170,8 @@ const EditProfileScreen = ({ navigation }) => {
 
   if (loading) {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Loading...</Text>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+      <Text style={{ color: theme.text }}>Loading...</Text>
     </View>
   );
   }
@@ -192,71 +191,142 @@ const EditProfileScreen = ({ navigation }) => {
       <View style={[styles.form, { backgroundColor: theme.background }]}>
         <Text style={[styles.label, { color: theme.text }]}>Name:</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.inputBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }
+          ]}
           value={name}
           onChangeText={setName}
           placeholder="Enter your name"
+          placeholderTextColor={theme.textSecondary}
         />
 
         <Text style={[styles.label, { color: theme.text }]}>Email:</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.inputBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }
+          ]}
           value={email}
           onChangeText={setEmail}
           placeholder="Enter your email"
+          placeholderTextColor={theme.textSecondary}
           keyboardType="email-address"
           autoCapitalize="none"
         />
 
         <Text style={[styles.label, { color: theme.text }]}>Phone:</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.inputBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }
+          ]}
           value={phone}
           onChangeText={setPhone}
           placeholder="Enter your phone number"
+          placeholderTextColor={theme.textSecondary}
           keyboardType="phone-pad"
           autoCapitalize="none"
         />
 
         <Text style={[styles.label, { color: theme.text }]}>Starting Weight (lbs):</Text>
         <TextInput
-            style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
-            value={startWeight}
-            onChangeText={setStartWeight}
-            placeholder="Enter your starting weight"
-            keyboardType="numeric"
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.inputBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1,
+              opacity: 0.7  // Add opacity to visually indicate it's disabled
+            }
+          ]}
+          value={startWeight}
+          editable={false}  // Make the field read-only
+          placeholder="Starting weight"
+          placeholderTextColor={theme.textSecondary}
+          keyboardType="numeric"
         />
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Change Password</Text>
 
         <Text style={[styles.label, { color: theme.text }]}>Current Password:</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.inputBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }
+          ]}
           value={currentPassword}
           onChangeText={setCurrentPassword}
           placeholder="Enter current password"
+          placeholderTextColor={theme.textSecondary}
           secureTextEntry
         />
 
         <Text style={[styles.label, { color: theme.text }]}>New Password:</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.inputBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }
+          ]}
           value={newPassword}
           onChangeText={setNewPassword}
           placeholder="Enter new password"
+          placeholderTextColor={theme.textSecondary}
           secureTextEntry
         />
 
         <Text style={[styles.label, { color: theme.text }]}>Confirm New Password:</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.inputBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }
+          ]}
           value={confirmNewPassword}
           onChangeText={setConfirmNewPassword}
           placeholder="Confirm new password"
+          placeholderTextColor={theme.textSecondary}
           secureTextEntry
         />
-
-        <TouchableOpacity style={[styles.saveButton, { backgroundColor: theme.buttonBackground }]} onPress={handleSaveChanges}>
+        {/* style={[
+              styles.actionButton,
+              {
+                backgroundColor: theme.actionButton,
+                borderColor: theme.border,
+                marginLeft: 8,
+              },
+            ]} */}
+        <TouchableOpacity style={[styles.saveButton, { backgroundColor: theme.actionButton }]} onPress={handleSaveChanges}>
           <Text style={[styles.saveButtonText, { color: theme.buttonText }]}>Save Changes</Text>
         </TouchableOpacity>
       </View>
@@ -292,12 +362,12 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   input: {
-    backgroundColor: 'white',
     borderRadius: 8,
-    padding: 10,
+    padding: 12,
     marginBottom: 15,
     fontSize: 16,
     fontFamily: 'sans-serif',
+    width: '100%',
   },
   sectionTitle: {
     fontSize: 18,
@@ -311,6 +381,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 20,
+    marginBottom: 30,
   },
   saveButtonText: {
     color: 'white',

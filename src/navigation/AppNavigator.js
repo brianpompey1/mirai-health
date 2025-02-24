@@ -59,7 +59,7 @@ const TabNavigator = () => {
 
   const handleAddExercise = useCallback(() => {
     navigation.navigate("Profile", {
-      screen: "ProfileHome"
+      screen: "Profile"
     });
     toggleAddModal();
   }, [navigation, toggleAddModal]);

@@ -115,7 +115,14 @@ const RequestAppointmentScreen = ({ navigation, route }) => {
         <Text style={[styles.label, { color: theme.text }]}>Select Date and Time</Text>
         
         <TouchableOpacity 
-          style={[styles.pickerButton, { backgroundColor: theme.touchableBackground }]} 
+          style={[
+            styles.pickerButton,
+            { 
+              backgroundColor: theme.touchableBackground,
+              borderColor: theme.border,
+              borderWidth: 1
+            }
+          ]} 
           onPress={showDatePicker}
         >
           <Text style={[styles.pickerButtonText, { color: theme.text }]}>{formatDate(selectedDate)}</Text>
@@ -123,7 +130,14 @@ const RequestAppointmentScreen = ({ navigation, route }) => {
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.pickerButton, { backgroundColor: theme.touchableBackground }]} 
+          style={[
+            styles.pickerButton,
+            { 
+              backgroundColor: theme.touchableBackground,
+              borderColor: theme.border,
+              borderWidth: 1
+            }
+          ]} 
           onPress={showTimePicker}
         >
           <Text style={[styles.pickerButtonText, { color: theme.text }]}>{formatTime(selectedTime)}</Text>
@@ -135,7 +149,7 @@ const RequestAppointmentScreen = ({ navigation, route }) => {
           style={[styles.input, { 
             backgroundColor: theme.touchableBackground,
             color: theme.text,
-            borderColor: theme.border 
+            borderColor: theme.border
           }]}
           placeholder="Add any notes or special requests..."
           placeholderTextColor={theme.textSecondary}
@@ -145,11 +159,11 @@ const RequestAppointmentScreen = ({ navigation, route }) => {
         />
 
         <TouchableOpacity 
-          style={[styles.submitButton, { backgroundColor: theme.buttonBackground }]}
+          style={[styles.submitButton, { backgroundColor: theme.actionButton }]}
           onPress={handleSubmit}
           disabled={loading}
         >
-          <Text style={[styles.submitButtonText, { color: theme.primary }]}>
+          <Text style={[styles.submitButtonText, { color: theme.actionButtonText }]}>
             {loading ? 'Requesting...' : 'Request Appointment'}
           </Text>
         </TouchableOpacity>
@@ -200,9 +214,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 15,
-    borderRadius: 8,
+    padding: 12,
     marginBottom: 15,
+    borderRadius: 8,
   },
   pickerButtonText: {
     fontSize: 16,

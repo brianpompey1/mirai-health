@@ -1,4 +1,5 @@
 import React from 'react';
+import { View, TouchableOpacity } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from '../contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +13,8 @@ import SupportNavigator from './SupportNavigator';
 import RescheduleAppointmentScreen from '../screens/RescheduleAppointmentScreen';
 import AddExerciseScreen from '../screens/AddExerciseScreen';
 import WeightHistoryScreen from '../screens/WeightHistoryScreen';
+import ThemeSettingsScreen from '../screens/ThemeSettingsScreen';
+import MessageCenterScreen from '../screens/MessageCenterScreen';
 
 const ProfileStack = createNativeStackNavigator();
 
@@ -40,7 +43,7 @@ const ProfileNavigator = () => {
   return (
     <ProfileStack.Navigator screenOptions={headerOptions}>
       <ProfileStack.Screen
-        name="ProfileHome"
+        name="Profile"
         component={ProfileScreen}
         options={{ headerShown: false }}
       />
@@ -97,6 +100,25 @@ const ProfileNavigator = () => {
         name="WeightHistory" 
         component={WeightHistoryScreen}
         options={{ title: "Weight History" }}
+      />
+      <ProfileStack.Screen 
+        name="ThemeSettings" 
+        component={ThemeSettingsScreen}
+        options={{
+          title: 'Theme Settings',
+          headerBackTitle: 'Back'
+        }}
+      />
+      <ProfileStack.Screen
+        name="MessageCenter"
+        component={MessageCenterScreen}
+        options={{
+          title: 'Message Center',
+          headerStyle: {
+            backgroundColor: theme.cardBackground,
+          },
+          headerTintColor: theme.text,
+        }}
       />
     </ProfileStack.Navigator>
   );
