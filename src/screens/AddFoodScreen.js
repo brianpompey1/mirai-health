@@ -13,6 +13,7 @@ import { supabase } from '../utils/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import debounce from 'lodash.debounce';
 import { useTheme } from '../contexts/ThemeContext';
+import { localToUTC, getStartOfDay, getEndOfDay } from '../utils/timezone';
 
 const AddFoodScreen = ({ navigation, route }) => {
   const params = route.params || {};
@@ -126,8 +127,8 @@ const AddFoodScreen = ({ navigation, route }) => {
   };
 
   const handleAddFoodItem = async () => {
-    if (!selectedFood || !servings || isNaN(servings)) {
-      Alert.alert('Error', 'Please select a food and enter valid servings');
+    if (!selectedFood || !servings || !mealType) {
+      Alert.alert('Error', 'Please select a food item, specify servings, and choose a meal type');
       return;
     }
 
@@ -168,16 +169,15 @@ const AddFoodScreen = ({ navigation, route }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      // If no time is specified, use current time in HH:mm format
-      const currentTime = new Date().toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: false 
-      });
+      // Get current date/time in user's timezone
+      const now = new Date();
+      
+      // Convert to UTC for storage
+      const mealDateTime = localToUTC(now);
 
       const mealData = {
         type: mealType,
-        time: mealTime || currentTime,
+        time: mealDateTime,
         user_id: user.id,
         date: selectedDate ? formatSelectedDate(selectedDate) : getLocalDateString()
       };
@@ -224,6 +224,25 @@ const AddFoodScreen = ({ navigation, route }) => {
         .insert(foodItemsData);
 
       if (foodItemsError) throw foodItemsError;
+
+      // Fetch updated meals to refresh the log
+      const startOfDay = getStartOfDay();
+      const endOfDay = getEndOfDay();
+
+      console.log('Fetching meals between:', {
+        start: new Date(startOfDay).toLocaleString(),
+        end: new Date(endOfDay).toLocaleString()
+      });
+
+      const { data, error } = await supabase
+        .from('meals')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('time', startOfDay)
+        .lte('time', endOfDay)
+        .order('time', { ascending: true });
+
+      if (error) throw error;
 
       Alert.alert(
         'Success', 

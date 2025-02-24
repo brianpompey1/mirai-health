@@ -15,17 +15,24 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Calendar from 'expo-calendar';
 import { useTheme } from '../contexts/ThemeContext';
+import { 
+  formatTime, 
+  formatDate, 
+  formatWeekday, 
+  isFutureDate,
+  localToUTC 
+} from '../utils/timezone';
 
 const ProfileScreen = ({ navigation, route }) => {
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [pastAppointments, setPastAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
-  const [currentWeight, setCurrentWeight] = useState(0); // Initialize to 0
-  const [goalWeight, setGoalWeight] = useState(0); //  Make dynamic later
-  const [startWeight, setStartWeight] = useState(0);  // Initialize to 0
+  const [currentWeight, setCurrentWeight] = useState(0);
+  const [goalWeight, setGoalWeight] = useState(0);
+  const [startWeight, setStartWeight] = useState(0);
   const [lastWeight, setLastWeight] = useState(0);
-  const [currentDietPlan, setCurrentDietPlan] = useState(null); // Initialize as null
+  const [currentDietPlan, setCurrentDietPlan] = useState(null);
   const [userName, setUserName] = useState('');
   const [profilePicture, setProfilePicture] = useState('');
   const { theme } = useTheme();
@@ -47,7 +54,7 @@ const ProfileScreen = ({ navigation, route }) => {
       setUserId(user.id);
 
       // Fetch appointments
-      const now = new Date().toISOString();
+      const now = localToUTC(new Date()); // Convert current time to UTC for comparison
       const { data: appointmentsData, error: appointmentsError } = await supabase
         .from('appointments')
         .select('*')
@@ -57,10 +64,11 @@ const ProfileScreen = ({ navigation, route }) => {
       if (appointmentsError) {
         console.error('Error fetching appointments:', appointmentsError);
       } else if (appointmentsData) {
-        const upcoming = appointmentsData.filter(apt => apt.date_time > now);
+        // Use isFutureDate to properly handle timezone conversion
+        const upcoming = appointmentsData.filter(apt => isFutureDate(apt.date_time));
         const past = appointmentsData
-          .filter(apt => apt.date_time <= now)
-          .sort((a, b) => new Date(b.date_time) - new Date(a.date_time)); // Sort past appointments in descending order
+          .filter(apt => !isFutureDate(apt.date_time))
+          .sort((a, b) => new Date(b.date_time) - new Date(a.date_time));
         setUpcomingAppointments(upcoming);
         setPastAppointments(past);
       }
@@ -257,18 +265,6 @@ const ProfileScreen = ({ navigation, route }) => {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-  };
-
-  const formatTime = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
@@ -427,10 +423,10 @@ const ProfileScreen = ({ navigation, route }) => {
                 <View style={styles.appointmentHeader}>
                   <View style={styles.dateTimeContainer}>
                     <Text style={[styles.appointmentDay, { color: theme.text }]}>
-                      {new Date(appointment.date_time).toLocaleDateString('en-US', { weekday: 'short' })}
+                      {formatWeekday(appointment.date_time)}
                     </Text>
                     <Text style={[styles.appointmentDate, { color: theme.text }]}>
-                      {new Date(appointment.date_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {formatDate(appointment.date_time)}
                     </Text>
                   </View>
                   <View style={styles.appointmentTime}>
@@ -466,10 +462,10 @@ const ProfileScreen = ({ navigation, route }) => {
                 <View style={styles.appointmentHeader}>
                   <View style={styles.dateTimeContainer}>
                     <Text style={[styles.appointmentDay, { color: theme.text }]}>
-                      {new Date(appointment.date_time).toLocaleDateString('en-US', { weekday: 'short' })}
+                      {formatWeekday(appointment.date_time)}
                     </Text>
                     <Text style={[styles.appointmentDate, { color: theme.text }]}>
-                      {new Date(appointment.date_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {formatDate(appointment.date_time)}
                     </Text>
                   </View>
                   <View style={styles.appointmentTime}>
@@ -530,6 +526,7 @@ const styles = StyleSheet.create({
   },
   profileInfo: {
     alignItems: 'center',
+    paddingRight: 20,
     flex: 1,
   },
   headerText: {
