@@ -316,7 +316,7 @@ const ProfileScreen = ({ navigation, route }) => {
             style={[styles.settingsButton, { backgroundColor: theme.background }]}
             onPress={() => navigation.navigate('Settings')}
           >
-            <Ionicons name="settings-outline" size={24} color="black" />
+            <Ionicons name="settings-outline" size={24} color={theme.text} />
           </TouchableOpacity>
         </View>
 
