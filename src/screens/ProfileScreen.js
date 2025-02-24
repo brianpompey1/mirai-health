@@ -384,7 +384,7 @@ const ProfileScreen = ({ navigation, route }) => {
         </View>
 
         {/* Diet Plan Section */}
-        <View style={[styles.dietPlanSection, { backgroundColor: theme.cardBackground }]}>
+        {/* <View style={[styles.dietPlanSection, { backgroundColor: theme.cardBackground }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Current Diet Plan</Text>
           {currentDietPlan ? (
             <>
@@ -414,7 +414,7 @@ const ProfileScreen = ({ navigation, route }) => {
           >
             <Text style={[styles.viewHistoryText, { color: theme.primary }]}>View Diet Plan History</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         {/* Upcoming Appointments */}
         <View style={[styles.appointmentsSection, { backgroundColor: theme.cardBackground }]}>
