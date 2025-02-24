@@ -103,17 +103,49 @@ const ProfileScreen = ({ navigation, route }) => {
         setCurrentDietPlan(dietPlanData.diet_plans);
       }
 
-      // Fetch weight progress
-      const { data: weightData, error: weightError } = await supabase
-        .from('user_progress')
-        .select('date, weight')
+      // Fetch weight from most recent appointment that has notes
+      const { data: latestAppointment, error: appointmentError } = await supabase
+        .from('appointments')
+        .select('notes, date_time')
         .eq('user_id', user.id)
-        .order('date', { ascending: false });
+        .not('notes', 'is', null)  // Only get appointments with notes
+        .not('notes', 'eq', '')    // Exclude empty notes
+        .order('date_time', { ascending: false })
+        .limit(2);  // Get last 2 appointments to calculate change since last weigh-in
 
-      if (!weightError && weightData && weightData.length > 0) {
-        setCurrentWeight(weightData[0].weight);
-        if (weightData.length > 1) {
-          setLastWeight(weightData[1].weight);
+      console.log('Latest Appointments:', latestAppointment); // Debug log
+
+      if (!appointmentError && latestAppointment && latestAppointment.length > 0) {
+        // Extract weight from notes using regex to match "Weight: XXX"
+        const currentNotes = latestAppointment[0].notes;
+        console.log('Current Notes:', currentNotes); // Debug log
+        
+        if (currentNotes) {
+          const weightMatch = currentNotes.match(/Weight:\s*(\d+)/);
+          console.log('Weight Match:', weightMatch); // Debug log
+          
+          if (weightMatch && weightMatch[1]) {
+            const weight = parseFloat(weightMatch[1]);
+            console.log('Parsed Weight:', weight); // Debug log
+            if (!isNaN(weight)) {
+              setCurrentWeight(weight);
+              console.log('Set Current Weight to:', weight); // Debug log
+            }
+          }
+        }
+
+        // Get previous weight for "Change Since Last Weigh-In"
+        if (latestAppointment.length > 1) {
+          const previousNotes = latestAppointment[1].notes;
+          if (previousNotes) {
+            const weightMatch = previousNotes.match(/Weight:\s*(\d+)/);
+            if (weightMatch && weightMatch[1]) {
+              const weight = parseFloat(weightMatch[1]);
+              if (!isNaN(weight)) {
+                setLastWeight(weight);
+              }
+            }
+          }
         }
       }
     } catch (error) {
