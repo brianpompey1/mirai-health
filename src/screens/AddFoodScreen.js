@@ -278,7 +278,7 @@ const AddFoodScreen = ({ navigation, route }) => {
               <Text style={[
                 styles.buttonText, 
                 mealType === type && styles.selectedMealText, 
-                { color: theme.text }
+                { color: theme.text, fontSize: 10 }
               ]}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
               </Text>
@@ -288,7 +288,7 @@ const AddFoodScreen = ({ navigation, route }) => {
 
         <View style={[styles.searchSection, { backgroundColor: theme.background }]}>
           <TextInput
-            style={[styles.searchInput, { backgroundColor: theme.background }]}
+            style={[styles.searchInput, { backgroundColor: theme.text }]}
             placeholder="Search for a food..."
             value={searchTerm}
             onChangeText={handleSearchChange}
