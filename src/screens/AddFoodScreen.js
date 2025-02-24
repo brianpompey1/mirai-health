@@ -28,8 +28,18 @@ const AddFoodScreen = ({ navigation, route }) => {
   const [foodItems, setFoodItems] = useState(initialFoodItems || []);
   const { theme } = useTheme();
 
-  const getLocalDateString = (dateStr) => {
+  const getLocalDateString = () => {
+    const now = new Date();
+    now.setHours(12, 0, 0, 0);
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatSelectedDate = (dateStr) => {
     const date = new Date(dateStr);
+    date.setHours(12, 0, 0, 0);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -88,13 +98,13 @@ const AddFoodScreen = ({ navigation, route }) => {
   const checkDailyLimits = async (category, servingsToAdd) => {
     const { data: { user } } = await supabase.auth.getUser();
     
-    const date = selectedDate || new Date().toISOString().split('T')[0];
+    const date = selectedDate ? formatSelectedDate(selectedDate) : getLocalDateString();
     
     const { data, error } = await supabase
       .from('daily_food_logs')
       .select('vegetable_servings, fruit_servings')
       .eq('user_id', user.id)
-      .eq('date', getLocalDateString(date))
+      .eq('date', date)
       .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
@@ -169,7 +179,7 @@ const AddFoodScreen = ({ navigation, route }) => {
         type: mealType,
         time: mealTime || currentTime,
         user_id: user.id,
-        date: selectedDate ? getLocalDateString(selectedDate) : getLocalDateString(new Date().toISOString())
+        date: selectedDate ? formatSelectedDate(selectedDate) : getLocalDateString()
       };
 
       let mealId = route.params?.mealId;
