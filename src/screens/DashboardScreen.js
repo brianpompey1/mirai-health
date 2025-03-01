@@ -11,6 +11,7 @@ import AddActionModal from '../components/AddActionModal';
 import { useTheme } from '../contexts/ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ExerciseItem from '../components/ExerciseItem';
+import { localToUTC } from '../utils/timezone';
 
 const getLocalDateString = (date) => {
   const d = new Date(date);
@@ -512,7 +513,8 @@ const DashboardScreen = ({ navigation }) => {
       mealId: meal.id,
       mealType: meal.type || '',
       mealTime: meal.time || '',
-      foodItems: Array.isArray(meal.foodItems) ? meal.foodItems : []
+      foodItems: Array.isArray(meal.foodItems) ? meal.foodItems : [],
+      selectedDate: getLocalDateString()
     });
   };
 
@@ -609,7 +611,7 @@ const DashboardScreen = ({ navigation }) => {
         .from('meals')
         .update({
           type: mealType,
-          time: mealTime,
+          time: localToUTC(mealTime, true),
           food_items: selectedFoods
         })
         .eq('id', editingMeal.id);
@@ -877,7 +879,7 @@ const DashboardScreen = ({ navigation }) => {
                     borderColor: theme.border,
                   },
                 ]}
-                onPress={() => navigation.navigate('AddFood')}
+                onPress={() => navigation.navigate('AddFood', { selectedDate: getLocalDateString() })}
               >
                 <Text style={[styles.addButtonText, { color: theme.importantButtonText }]}>+ Add Meal</Text>
               </TouchableOpacity>
@@ -1020,7 +1022,7 @@ const DashboardScreen = ({ navigation }) => {
         <AddActionModal
           isVisible={isAddActionModalVisible}
           onClose={() => setIsAddActionModalVisible(false)}
-          onAddFood={() => navigation.navigate('AddFood')}
+          onAddFood={() => navigation.navigate('AddFood', { selectedDate: getLocalDateString() })}
           onAddExercise={() => setIsExerciseModalVisible(true)}
           theme={theme}
         />

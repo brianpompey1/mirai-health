@@ -7,10 +7,18 @@ export const DEFAULT_TIMEZONE = 'America/New_York';
 /**
  * Convert a local datetime to UTC
  * @param {Date|string} dateTime - Local date time
- * @returns {string} - UTC ISO string
+ * @param {boolean} timeOnly - If true, returns only the time portion (HH:MM:SS)
+ * @returns {string} - UTC ISO string or time string
  */
-export const localToUTC = (dateTime) => {
+export const localToUTC = (dateTime, timeOnly = false) => {
   const date = new Date(dateTime);
+  if (timeOnly) {
+    // Format as HH:MM:SS for PostgreSQL time data type
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+  }
   return date.toISOString();
 };
 
@@ -111,4 +119,14 @@ export const formatWeekday = (dateTime) => {
   return formatDateTime(dateTime, {
     weekday: 'short'
   });
+};
+
+/**
+ * Get a date string in local timezone (YYYY-MM-DD)
+ * @param {Date} [date] - Optional date object, defaults to current date
+ * @returns {string} - Date string in YYYY-MM-DD format
+ */
+export const getLocalDateString = (date = new Date()) => {
+  const d = new Date(date);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 };

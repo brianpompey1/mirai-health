@@ -4,6 +4,7 @@ import Modal from 'react-native-modal';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
+import { getLocalDateString } from '../utils/timezone';
 
 const AddActionModal = ({ isVisible, onClose, onAddFood }) => {
   const { theme } = useTheme();
@@ -41,7 +42,7 @@ const AddActionModal = ({ isVisible, onClose, onAddFood }) => {
           ]}
           onPress={() => {
             onClose();
-            navigation.navigate('AddFood');
+            navigation.navigate('AddFood', { selectedDate: getLocalDateString() });
           }}
         >
           <Text style={[styles.actionButtonText, { color: theme.actionButtonText }]}>

@@ -76,8 +76,18 @@ export const recommendationsService = {
 
     // Convert our protein categories to Spoonacular diet types
     mapProteinCategoryToDiet(category) {
-        console.log('Mapping protein category:', category);
-        return 'ketogenic'; // Always return ketogenic diet
+        switch (category?.toLowerCase()) {
+            case 'very lean':
+                return 'low-fat';
+            case 'lean':
+                return 'high-protein';
+            case 'medium fat':
+                return 'ketogenic';
+            case 'protein alternative':
+                return 'vegetarian';
+            default:
+                return 'balanced';
+        }
     },
 
     // Get allowed foods for a user
@@ -232,160 +242,50 @@ export const recommendationsService = {
         try {
             console.log('Getting recommendations for user:', userId);
             
-            // Get user preferences
+            // Get user's diet preferences
             const preferences = await this.getUserDietPreferences(userId);
             console.log('User preferences:', preferences);
-            
-            if (!preferences) {
-                throw new Error('Could not get user preferences');
-            }
 
-            // Get allowed foods
+            // Get list of allowed foods
             const allowedFoods = await this.getAllowedFoods();
-            console.log('Fetched allowed foods:', allowedFoods);
-            
-            if (!allowedFoods.length) {
-                console.error('No allowed foods found in database');
-                return { recipes: [], articles: [] };
-            }
+            console.log('Number of allowed foods:', allowedFoods?.length || 0);
 
-            // Get protein foods to include in search
-            const proteinFoods = allowedFoods
-                .filter(food => food.category?.toLowerCase() === 'protein')
-                .map(food => food.name.toLowerCase());
-            
-            // Get vegetable foods to include in search
-            const vegetableFoods = allowedFoods
-                .filter(food => food.category?.toLowerCase() === 'vegetable')
-                .map(food => food.name.toLowerCase());
+            // Calculate daily targets
+            const targetCaloriesPerMeal = Math.round(preferences.target_calories / 3);
+            const diet = this.mapProteinCategoryToDiet(preferences.preferred_protein_category);
 
-            console.log('Search foods:', { proteinFoods, vegetableFoods });
-
-            // Create a query using some of our allowed foods
-            const queryFoods = [...proteinFoods.slice(0, 2), ...vegetableFoods.slice(0, 2)];
-            const query = queryFoods.length > 0 ? queryFoods.join(' OR ') : 'keto';
-            console.log('Search query:', query);
-            
-            // Calculate per-meal calories (assuming 3 meals per day)
-            const mealCalories = Math.round(preferences.target_calories / 3);
-            console.log('Calculated meal calories:', mealCalories);
-
-            // Try first with strict keto parameters
-            let recipes = await spoonacularService.searchRecipes({
-                maxCalories: mealCalories + 400,
-                minProtein: Math.round(preferences.daily_protein_target / 5),
-                diet: 'ketogenic',
-                number: 100,
-                query: query,
-                maxCarbs: 15 // Allow slightly more carbs in search
-            });
-            console.log('Received recipes (strict search):', recipes.length);
-
-            if (!recipes.length) {
-                console.log('No recipes found with strict search, trying broader search');
-                // Try again with more relaxed parameters
-                recipes = await spoonacularService.searchRecipes({
-                    maxCalories: mealCalories + 500,
-                    number: 50,
-                    query: 'keto protein',
-                    maxCarbs: 20
-                });
-                console.log('Received recipes (broad search):', recipes.length);
-                
-                if (!recipes.length) {
-                    console.log('No recipes found with broad search, trying final fallback');
-                    // Final fallback with minimal restrictions
-                    recipes = await spoonacularService.searchRecipes({
-                        number: 50,
-                        query: 'low carb high protein',
-                        maxCarbs: 25
-                    });
-                    console.log('Received recipes (fallback search):', recipes.length);
-                    
-                    if (!recipes.length) {
-                        console.log('No recipes found even with fallback search');
-                        return { recipes: [], articles: [] };
-                    }
-                }
-            }
-
-            console.log('Starting to filter recipes...');
-            
-            // Filter recipes but be very lenient with the matching
-            const allowedRecipes = recipes.filter(recipe => {
-                console.log(`\nAnalyzing recipe: ${recipe.title}`);
-                console.log(`Nutrition: ${JSON.stringify(recipe.nutrition)}`);
-                
-                // Check carbs first
-                const carbsPerServing = recipe.nutrition?.carbs || 0;
-                if (carbsPerServing > 20) { // More lenient carb limit
-                    console.log(`Rejected: too many carbs (${carbsPerServing}g)`);
-                    return false;
-                }
-
-                // Count allowed ingredients
-                const allowedIngredientCount = recipe.ingredients.filter(ingredient => {
-                    const allowed = this.isRecipeAllowed(recipe, allowedFoods);
-                    console.log(`Ingredient ${ingredient.name}: ${allowed ? 'allowed' : 'not allowed'}`);
-                    return allowed;
-                }).length;
-                
-                // Calculate percentage of allowed ingredients
-                const allowedPercentage = (allowedIngredientCount / recipe.ingredients.length) * 100;
-                
-                // More lenient requirements:
-                // 1. At least 30% of ingredients are allowed, OR
-                // 2. It has at least 2 allowed ingredients and is under carb limit
-                const hasMinimumAllowed = allowedIngredientCount >= 2;
-                const meetsPercentage = allowedPercentage >= 30;
-                
-                const isAllowed = meetsPercentage || (hasMinimumAllowed && carbsPerServing <= 20);
-                
-                console.log(`Recipe results:
-                    - Carbs per serving: ${carbsPerServing}g
-                    - Allowed ingredients: ${allowedIngredientCount}/${recipe.ingredients.length} (${allowedPercentage.toFixed(1)}%)
-                    - Final decision: ${isAllowed ? 'ALLOWED' : 'REJECTED'}`
-                );
-                
-                return isAllowed;
-            });
-            
-            console.log(`Filtered ${recipes.length} recipes down to ${allowedRecipes.length} allowed recipes`);
-
-            // Sort recipes by a combination of carbs (lower is better) and allowed ingredients (higher is better)
-            const sortedRecipes = allowedRecipes.sort((a, b) => {
-                const aCarbs = a.nutrition?.carbs || 0;
-                const bCarbs = b.nutrition?.carbs || 0;
-                const aCarbScore = Math.max(0, 1 - (aCarbs / 20)); // 0 to 1, where 1 is best (0 carbs)
-                const bCarbScore = Math.max(0, 1 - (bCarbs / 20));
-                
-                const aAllowed = a.ingredients.filter(i => this.isRecipeAllowed(a, allowedFoods)).length;
-                const bAllowed = b.ingredients.filter(i => this.isRecipeAllowed(b, allowedFoods)).length;
-                const aAllowedScore = aAllowed / a.ingredients.length;
-                const bAllowedScore = bAllowed / b.ingredients.length;
-                
-                // Weight carbs more heavily (70%) than ingredient matching (30%)
-                const aScore = (aCarbScore * 0.7) + (aAllowedScore * 0.3);
-                const bScore = (bCarbScore * 0.7) + (bAllowedScore * 0.3);
-                
-                return bScore - aScore;
+            console.log('Searching recipes with params:', {
+                maxCalories: targetCaloriesPerMeal,
+                minProtein: Math.round(preferences.daily_protein_target / 3),
+                diet,
+                maxCarbs: 50 // Reasonable limit for all diet types
             });
 
-            // Take only the first 10 recipes
-            const finalRecipes = sortedRecipes.slice(0, 10);
-            console.log('Final recipes:', finalRecipes.map(r => ({
-                title: r.title,
-                carbs: r.nutrition?.carbs,
-                allowedIngredients: r.ingredients.filter(i => this.isRecipeAllowed(r, allowedFoods)).length
-            })));
+            // Get recipes from Spoonacular
+            const recipes = await spoonacularService.searchRecipes({
+                maxCalories: targetCaloriesPerMeal,
+                minProtein: Math.round(preferences.daily_protein_target / 3),
+                diet,
+                maxCarbs: 50,
+                number: 10
+            });
+
+            console.log('Found recipes:', recipes?.length || 0);
+
+            // Filter recipes to only include those with allowed ingredients
+            const filteredRecipes = recipes.filter(recipe => 
+                this.isRecipeAllowed(recipe, allowedFoods)
+            );
+
+            console.log('Filtered recipes:', filteredRecipes?.length || 0);
 
             return {
-                recipes: finalRecipes,
-                articles: []
+                recipes: filteredRecipes,
+                preferences
             };
         } catch (error) {
-            console.error('Error getting recommendations:', error);
-            return { recipes: [], articles: [] };
+            console.error('Error getting personalized recommendations:', error);
+            throw error;
         }
     }
 };

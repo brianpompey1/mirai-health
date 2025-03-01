@@ -13,7 +13,7 @@ import { supabase } from '../utils/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import debounce from 'lodash.debounce';
 import { useTheme } from '../contexts/ThemeContext';
-import { localToUTC, getStartOfDay, getEndOfDay } from '../utils/timezone';
+import { localToUTC, getStartOfDay, getEndOfDay, getLocalDateString } from '../utils/timezone';
 
 const AddFoodScreen = ({ navigation, route }) => {
   const params = route.params || {};
@@ -29,22 +29,8 @@ const AddFoodScreen = ({ navigation, route }) => {
   const [foodItems, setFoodItems] = useState(initialFoodItems || []);
   const { theme } = useTheme();
 
-  const getLocalDateString = () => {
-    const now = new Date();
-    now.setHours(12, 0, 0, 0);
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
   const formatSelectedDate = (dateStr) => {
-    const date = new Date(dateStr);
-    date.setHours(12, 0, 0, 0);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return getLocalDateString(new Date(dateStr));
   };
 
   useEffect(() => {
@@ -172,14 +158,25 @@ const AddFoodScreen = ({ navigation, route }) => {
       // Get current date/time in user's timezone
       const now = new Date();
       
-      // Convert to UTC for storage
-      const mealDateTime = localToUTC(now);
+      // If we're editing and have an initial time, use that; otherwise use current time
+      let timeString;
+      if (editMode && initialMealTime) {
+        timeString = initialMealTime; // PostgreSQL time format is already correct
+      } else {
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        timeString = `${hours}:${minutes}:${seconds}`;
+      }
+
+      // Get today's date in local timezone
+      const today = getLocalDateString(new Date());
 
       const mealData = {
         type: mealType,
-        time: mealDateTime,
+        time: timeString,
         user_id: user.id,
-        date: selectedDate ? formatSelectedDate(selectedDate) : getLocalDateString()
+        date: selectedDate || today // selectedDate is already in the correct format
       };
 
       let mealId = route.params?.mealId;
@@ -226,21 +223,11 @@ const AddFoodScreen = ({ navigation, route }) => {
       if (foodItemsError) throw foodItemsError;
 
       // Fetch updated meals to refresh the log
-      const startOfDay = getStartOfDay();
-      const endOfDay = getEndOfDay();
-
-      console.log('Fetching meals between:', {
-        start: new Date(startOfDay).toLocaleString(),
-        end: new Date(endOfDay).toLocaleString()
-      });
-
       const { data, error } = await supabase
         .from('meals')
         .select('*')
         .eq('user_id', user.id)
-        .gte('time', startOfDay)
-        .lte('time', endOfDay)
-        .order('time', { ascending: true });
+        .eq('date', selectedDate ? getLocalDateString(new Date(selectedDate)) : getLocalDateString());
 
       if (error) throw error;
 

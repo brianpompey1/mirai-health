@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   Text,
-  Linking
+  Linking,
+  Alert
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { recommendationsService } from '../services/recommendationsService';
@@ -24,12 +25,20 @@ const RecommendationsScreen = () => {
 
   const loadRecommendations = useCallback(async () => {
     try {
-      const data = await recommendationsService.getPersonalizedRecommendations(user.id);
-      setRecommendations(data.recipes);
       setError(null);
+      const data = await recommendationsService.getPersonalizedRecommendations(user.id);
+      
+      if (!data?.recipes?.length) {
+        setError('No recipes found matching your diet preferences. Please try again later.');
+        setRecommendations([]);
+        return;
+      }
+      
+      setRecommendations(data.recipes);
     } catch (err) {
       console.error('Error loading recommendations:', err);
-      setError('Failed to load recommendations. Please try again.');
+      setError('Failed to load recommendations. Please check your internet connection and try again.');
+      setRecommendations([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -51,10 +60,15 @@ const RecommendationsScreen = () => {
         const supported = await Linking.canOpenURL(recipe.sourceUrl);
         if (supported) {
           await Linking.openURL(recipe.sourceUrl);
+        } else {
+          Alert.alert('Error', 'Cannot open this recipe link.');
         }
       } catch (error) {
         console.error('Error opening recipe URL:', error);
+        Alert.alert('Error', 'Failed to open recipe link. Please try again.');
       }
+    } else {
+      Alert.alert('Error', 'No recipe link available.');
     }
   }, []);
 
@@ -66,16 +80,6 @@ const RecommendationsScreen = () => {
     );
   }
 
-  if (error) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: theme.text }]}>{error}</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <FlatList
@@ -83,10 +87,11 @@ const RecommendationsScreen = () => {
         renderItem={({ item }) => (
           <RecipeCard
             recipe={item}
-            onPress={handleRecipePress}
+            onPress={() => handleRecipePress(item)}
+            theme={theme}
           />
         )}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
@@ -98,7 +103,7 @@ const RecommendationsScreen = () => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: theme.text }]}>
-              No recommendations available at the moment.
+              {error || 'No recommendations available at the moment.'}
             </Text>
           </View>
         }
@@ -112,27 +117,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    paddingVertical: 8,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     padding: 16,
-  },
-  errorText: {
-    fontSize: 16,
-    textAlign: 'center',
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    justifyContent: 'center',
+    padding: 20,
   },
   emptyText: {
     fontSize: 16,
     textAlign: 'center',
+    lineHeight: 24,
   },
 });
 
