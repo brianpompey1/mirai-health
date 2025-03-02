@@ -13,6 +13,7 @@ import { supabase } from '../utils/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import debounce from 'lodash.debounce';
 import { useTheme } from '../contexts/ThemeContext';
+import { localToUTC, getStartOfDay, getEndOfDay, getLocalDateString } from '../utils/timezone';
 
 const AddFoodScreen = ({ navigation, route }) => {
   const params = route.params || {};
@@ -28,12 +29,8 @@ const AddFoodScreen = ({ navigation, route }) => {
   const [foodItems, setFoodItems] = useState(initialFoodItems || []);
   const { theme } = useTheme();
 
-  const getLocalDateString = (dateStr) => {
-    const date = new Date(dateStr);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  const formatSelectedDate = (dateStr) => {
+    return getLocalDateString(new Date(dateStr));
   };
 
   useEffect(() => {
@@ -88,13 +85,13 @@ const AddFoodScreen = ({ navigation, route }) => {
   const checkDailyLimits = async (category, servingsToAdd) => {
     const { data: { user } } = await supabase.auth.getUser();
     
-    const date = selectedDate || new Date().toISOString().split('T')[0];
+    const date = selectedDate ? formatSelectedDate(selectedDate) : getLocalDateString();
     
     const { data, error } = await supabase
       .from('daily_food_logs')
       .select('vegetable_servings, fruit_servings')
       .eq('user_id', user.id)
-      .eq('date', getLocalDateString(date))
+      .eq('date', date)
       .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
@@ -116,8 +113,8 @@ const AddFoodScreen = ({ navigation, route }) => {
   };
 
   const handleAddFoodItem = async () => {
-    if (!selectedFood || !servings || isNaN(servings)) {
-      Alert.alert('Error', 'Please select a food and enter valid servings');
+    if (!selectedFood || !servings || !mealType) {
+      Alert.alert('Error', 'Please select a food item, specify servings, and choose a meal type');
       return;
     }
 
@@ -158,18 +155,28 @@ const AddFoodScreen = ({ navigation, route }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      // If no time is specified, use current time in HH:mm format
-      const currentTime = new Date().toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: false 
-      });
+      // Get current date/time in user's timezone
+      const now = new Date();
+      
+      // If we're editing and have an initial time, use that; otherwise use current time
+      let timeString;
+      if (editMode && initialMealTime) {
+        timeString = initialMealTime; // PostgreSQL time format is already correct
+      } else {
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        timeString = `${hours}:${minutes}:${seconds}`;
+      }
+
+      // Get today's date in local timezone
+      const today = getLocalDateString(new Date());
 
       const mealData = {
         type: mealType,
-        time: mealTime || currentTime,
+        time: timeString,
         user_id: user.id,
-        date: selectedDate ? getLocalDateString(selectedDate) : getLocalDateString(new Date().toISOString())
+        date: selectedDate || today // selectedDate is already in the correct format
       };
 
       let mealId = route.params?.mealId;
@@ -214,6 +221,15 @@ const AddFoodScreen = ({ navigation, route }) => {
         .insert(foodItemsData);
 
       if (foodItemsError) throw foodItemsError;
+
+      // Fetch updated meals to refresh the log
+      const { data, error } = await supabase
+        .from('meals')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', selectedDate ? getLocalDateString(new Date(selectedDate)) : getLocalDateString());
+
+      if (error) throw error;
 
       Alert.alert(
         'Success', 
@@ -268,7 +284,7 @@ const AddFoodScreen = ({ navigation, route }) => {
               <Text style={[
                 styles.buttonText, 
                 mealType === type && styles.selectedMealText, 
-                { color: theme.text }
+                { color: theme.text, fontSize: 10 }
               ]}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
               </Text>
@@ -278,7 +294,7 @@ const AddFoodScreen = ({ navigation, route }) => {
 
         <View style={[styles.searchSection, { backgroundColor: theme.background }]}>
           <TextInput
-            style={[styles.searchInput, { backgroundColor: theme.background }]}
+            style={[styles.searchInput, { backgroundColor: theme.text }]}
             placeholder="Search for a food..."
             value={searchTerm}
             onChangeText={handleSearchChange}

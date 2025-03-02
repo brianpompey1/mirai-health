@@ -15,17 +15,24 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Calendar from 'expo-calendar';
 import { useTheme } from '../contexts/ThemeContext';
+import { 
+  formatTime, 
+  formatDate, 
+  formatWeekday, 
+  isFutureDate,
+  localToUTC 
+} from '../utils/timezone';
 
 const ProfileScreen = ({ navigation, route }) => {
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [pastAppointments, setPastAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
-  const [currentWeight, setCurrentWeight] = useState(0); // Initialize to 0
-  const [goalWeight, setGoalWeight] = useState(0); //  Make dynamic later
-  const [startWeight, setStartWeight] = useState(0);  // Initialize to 0
+  const [currentWeight, setCurrentWeight] = useState(0);
+  const [goalWeight, setGoalWeight] = useState(0);
+  const [startWeight, setStartWeight] = useState(0);
   const [lastWeight, setLastWeight] = useState(0);
-  const [currentDietPlan, setCurrentDietPlan] = useState(null); // Initialize as null
+  const [currentDietPlan, setCurrentDietPlan] = useState(null);
   const [userName, setUserName] = useState('');
   const [profilePicture, setProfilePicture] = useState('');
   const { theme } = useTheme();
@@ -47,7 +54,7 @@ const ProfileScreen = ({ navigation, route }) => {
       setUserId(user.id);
 
       // Fetch appointments
-      const now = new Date().toISOString();
+      const now = localToUTC(new Date()); // Convert current time to UTC for comparison
       const { data: appointmentsData, error: appointmentsError } = await supabase
         .from('appointments')
         .select('*')
@@ -57,10 +64,11 @@ const ProfileScreen = ({ navigation, route }) => {
       if (appointmentsError) {
         console.error('Error fetching appointments:', appointmentsError);
       } else if (appointmentsData) {
-        const upcoming = appointmentsData.filter(apt => apt.date_time > now);
+        // Use isFutureDate to properly handle timezone conversion
+        const upcoming = appointmentsData.filter(apt => isFutureDate(apt.date_time));
         const past = appointmentsData
-          .filter(apt => apt.date_time <= now)
-          .sort((a, b) => new Date(b.date_time) - new Date(a.date_time)); // Sort past appointments in descending order
+          .filter(apt => !isFutureDate(apt.date_time))
+          .sort((a, b) => new Date(b.date_time) - new Date(a.date_time));
         setUpcomingAppointments(upcoming);
         setPastAppointments(past);
       }
@@ -257,18 +265,6 @@ const ProfileScreen = ({ navigation, route }) => {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-  };
-
-  const formatTime = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
@@ -316,7 +312,7 @@ const ProfileScreen = ({ navigation, route }) => {
             style={[styles.settingsButton, { backgroundColor: theme.background }]}
             onPress={() => navigation.navigate('Settings')}
           >
-            <Ionicons name="settings-outline" size={24} color="black" />
+            <Ionicons name="settings-outline" size={24} color={theme.text} />
           </TouchableOpacity>
         </View>
 
@@ -332,7 +328,7 @@ const ProfileScreen = ({ navigation, route }) => {
             ]}
             onPress={() => navigation.navigate('EditProfile')}
           >
-            <Text style={[styles.actionButtonText, { color: theme.actionButtonText }]}>
+            <Text style={[styles.actionButtonText, { color: theme.actionButtonText, fontSize: 13 }]}>
               Edit Profile
             </Text>
           </TouchableOpacity>
@@ -348,7 +344,7 @@ const ProfileScreen = ({ navigation, route }) => {
             ]}
             onPress={() => navigation.navigate('RequestAppointment')}
           >
-            <Text style={[styles.actionButtonText, { color: theme.actionButtonText }]}>
+            <Text style={[styles.actionButtonText, { color: theme.actionButtonText, fontSize: 13 }]}>
               Request Appointment
             </Text>
           </TouchableOpacity>
@@ -423,31 +419,32 @@ const ProfileScreen = ({ navigation, route }) => {
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Upcoming Appointments</Text>
           {upcomingAppointments.length > 0 ? (
             upcomingAppointments.map((appointment) => (
-              <View key={appointment.id} style={[styles.appointmentItem, { backgroundColor: theme.background }]}>
-                <View style={styles.appointmentDetails}>
-                  <Text style={[styles.appointmentDate, { color: theme.text }]}>{formatDate(appointment.date_time)}</Text>
-                  <Text style={[styles.appointmentTime, { color: theme.text }]}>{formatTime(appointment.date_time)}</Text>
-                  <Text style={[styles.appointmentLocation, { color: theme.text }]}>{appointment.location}</Text>
+              <View key={appointment.id} style={[styles.appointmentCard, { backgroundColor: theme.background }]}>
+                <View style={styles.appointmentHeader}>
+                  <View style={styles.dateTimeContainer}>
+                    <Text style={[styles.appointmentDay, { color: theme.text }]}>
+                      {formatWeekday(appointment.date_time)}
+                    </Text>
+                    <Text style={[styles.appointmentDate, { color: theme.text }]}>
+                      {formatDate(appointment.date_time)}
+                    </Text>
+                  </View>
+                  <View style={styles.appointmentTime}>
+                    <Ionicons name="time-outline" size={20} color={theme.text} style={styles.timeIcon} />
+                    <Text style={[styles.timeText, { color: theme.text }]}>{formatTime(appointment.date_time)}</Text>
+                  </View>
                 </View>
-                <View style={[styles.appointmentActions, { backgroundColor: theme.cardBackground }]}>
-                  <TouchableOpacity 
-                    style={[styles.actionButton, { backgroundColor: theme.touchableBackground }]}
-                    onPress={() => handleReschedule(appointment.id)}
-                  >
-                    <Text style={[styles.actionButtonText, { color: theme.primary }]}>Reschedule</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.actionButton, { backgroundColor: theme.touchableBackground }]}
-                    onPress={() => handleCancel(appointment.id)}
-                  >
-                    <Text style={[styles.actionButtonText, { color: 'red' }]}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.actionButton, { backgroundColor: theme.touchableBackground }]}
-                    onPress={() => addToCalendar(appointment)}
-                  >
-                    <Ionicons name='calendar-outline' size={24} color={theme.primary} />
-                  </TouchableOpacity>
+                <View style={styles.appointmentBody}>
+                  <View style={styles.locationContainer}>
+                    <Ionicons name="location-outline" size={20} color={theme.text} style={styles.locationIcon} />
+                    <Text style={[styles.locationText, { color: theme.text }]}>{appointment.location}</Text>
+                  </View>
+                  {appointment.notes && (
+                    <View style={styles.notesContainer}>
+                      <Ionicons name="document-text-outline" size={20} color={theme.text} style={styles.notesIcon} />
+                      <Text style={[styles.notesText, { color: theme.text }]}>{appointment.notes}</Text>
+                    </View>
+                  )}
                 </View>
               </View>
             ))
@@ -461,13 +458,31 @@ const ProfileScreen = ({ navigation, route }) => {
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Past Appointments</Text>
           {pastAppointments.length > 0 ? (
             pastAppointments.map((appointment) => (
-              <View key={appointment.id} style={[styles.appointmentItem, { backgroundColor: theme.background }]}>
-                <View style={styles.appointmentDetails}>
-                  <Text style={[styles.appointmentDate, { color: theme.text }]}>{formatDate(appointment.date_time)}</Text>
-                  <Text style={[styles.appointmentTime, { color: theme.text }]}>{formatTime(appointment.date_time)}</Text>
-                  <Text style={[styles.appointmentLocation, { color: theme.text }]}>{appointment.location}</Text>
+              <View key={appointment.id} style={[styles.appointmentCard, { backgroundColor: theme.background }]}>
+                <View style={styles.appointmentHeader}>
+                  <View style={styles.dateTimeContainer}>
+                    <Text style={[styles.appointmentDay, { color: theme.text }]}>
+                      {formatWeekday(appointment.date_time)}
+                    </Text>
+                    <Text style={[styles.appointmentDate, { color: theme.text }]}>
+                      {formatDate(appointment.date_time)}
+                    </Text>
+                  </View>
+                  <View style={styles.appointmentTime}>
+                    <Ionicons name="time-outline" size={20} color={theme.text} style={styles.timeIcon} />
+                    <Text style={[styles.timeText, { color: theme.text }]}>{formatTime(appointment.date_time)}</Text>
+                  </View>
+                </View>
+                <View style={styles.appointmentBody}>
+                  <View style={styles.locationContainer}>
+                    <Ionicons name="location-outline" size={20} color={theme.text} style={styles.locationIcon} />
+                    <Text style={[styles.locationText, { color: theme.text }]}>{appointment.location}</Text>
+                  </View>
                   {appointment.notes && (
-                    <Text style={[styles.appointmentNotes, { color: theme.text }]}>{appointment.notes}</Text>
+                    <View style={styles.notesContainer}>
+                      <Ionicons name="document-text-outline" size={20} color={theme.text} style={styles.notesIcon} />
+                      <Text style={[styles.notesText, { color: theme.text }]}>{appointment.notes}</Text>
+                    </View>
                   )}
                 </View>
               </View>
@@ -511,6 +526,7 @@ const styles = StyleSheet.create({
   },
   profileInfo: {
     alignItems: 'center',
+    paddingRight: 20,
     flex: 1,
   },
   headerText: {
@@ -563,68 +579,101 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   appointmentsSection: {
-    backgroundColor: 'white',
-    margin: 10, // Reduced margin
-    borderRadius: 10,
-    padding: 15,
+    margin: 16,
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  appointmentCard: {
+    marginVertical: 8,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2.22,
+    elevation: 3,
+  },
+  appointmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  dateTimeContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  appointmentDay: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  appointmentDate: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  appointmentTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  timeIcon: {
+    marginRight: 6,
+  },
+  timeText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  appointmentBody: {
+    padding: 16,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  locationIcon: {
+    marginRight: 8,
+  },
+  locationText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  notesContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 8,
+  },
+  notesIcon: {
+    marginRight: 8,
+    marginTop: 2,
+  },
+  notesText: {
+    fontSize: 14,
+    flex: 1,
+    lineHeight: 20,
   },
   sectionTitle: {
     fontSize: 18,
-    fontFamily: 'sans-serif-medium',
-    marginBottom: 10,
-  },
-  appointmentItem: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingVertical: 10,
-  },
-  appointmentDetails: {
-    marginBottom: 5,
-  },
-  appointmentDate: {
-    fontSize: 16,
-    fontFamily: 'sans-serif-medium',
-  },
-  appointmentTime: {
-    fontSize: 14,
-    fontFamily: 'sans-serif',
-    color: 'gray',
-  },
-  appointmentLocation: {
-    fontSize: 14,
-    fontFamily: 'sans-serif',
-  },
-  appointmentNotes: {
-    fontSize: 14,
-    fontFamily: 'sans-serif',
-    color: 'gray',
-    marginTop: 5,
-  },
-  appointmentActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between', // Distribute buttons evenly
-    alignItems: 'center',           // Vertically center buttons
-    marginTop: 5,
-  },
-  actionButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 6,
-    marginHorizontal: 5,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontFamily: 'sans-serif-medium',
-    textAlign: 'center'
-  },
-  cancelButton: {
-    color: 'red', // Distinguish cancel button
+    fontWeight: 'bold',
+    marginBottom: 16,
   },
   noAppointmentsText: {
-    fontFamily: 'sans-serif',
-    color: 'gray',
     textAlign: 'center',
-    padding: 10
+    fontSize: 14,
+    fontStyle: 'italic',
+    padding: 16,
   },
   weightProgressSection: {
     backgroundColor: 'white',

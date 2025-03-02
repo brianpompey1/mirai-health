@@ -11,10 +11,55 @@ import AddActionModal from '../components/AddActionModal';
 import { useTheme } from '../contexts/ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ExerciseItem from '../components/ExerciseItem';
+import { localToUTC } from '../utils/timezone';
 
 const getLocalDateString = (date) => {
   const d = new Date(date);
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+};
+
+const getFoodType = (foodName) => {
+  const name = foodName.toLowerCase();
+  // List of common vegetables
+  const vegetables = [
+    "broccoli", "spinach", "kale", "carrot", "lettuce", 
+    "cucumber", "tomato", "celery", "pepper", "onion", "garlic"
+  ];
+  // List of common fruits
+  const fruits = [
+    "apple", "banana", "orange", "grape", "berry", 
+    "strawberry", "blueberry", "pear", "peach", "plum", "mango"
+  ];
+  // List of protein foods
+  const veryLeanProteins = ["egg white", "fish", "tuna", "cod", "tilapia"];
+  const leanProteins = ["chicken", "turkey", "lean beef"];
+  const mediumFatProteins = ["salmon", "beef", "pork"];
+  const proteinAlternatives = ["tofu", "tempeh", "seitan", "beans", "lentils"];
+
+  if (vegetables.some((veg) => name.includes(veg))) return "vegetable";
+  if (fruits.some((fruit) => name.includes(fruit))) return "fruit";
+  if (veryLeanProteins.some((protein) => name.includes(protein))) return "very_lean_protein";
+  if (leanProteins.some((protein) => name.includes(protein))) return "lean_protein";
+  if (mediumFatProteins.some((protein) => name.includes(protein))) return "medium_fat_protein";
+  if (proteinAlternatives.some((protein) => name.includes(protein))) return "protein_alternative";
+
+  return "other";
+};
+
+const getCaloriesForFood = (foodName, servings) => {
+  const foodType = getFoodType(foodName);
+  switch (foodType) {
+    case "very_lean_protein":
+      return servings * 35;
+    case "lean_protein":
+      return servings * 55;
+    case "medium_fat_protein":
+      return servings * 75;
+    case "protein_alternative":
+      return servings * 45;
+    default:
+      return 0; // Non-protein foods don't count towards calorie total
+  }
 };
 
 const DashboardScreen = ({ navigation }) => {
@@ -114,31 +159,14 @@ const DashboardScreen = ({ navigation }) => {
         setWaterGoal(summaryData.water_goal || 64);
       }
 
-      // First get the food items to calculate calories
-      const { data: foodItemsData, error: foodError } = await supabase
-        .from('food_items')
-        .select('id, calories_per_serving, protein_per_serving')
-        .eq('category', 'protein');
-
-      if (foodError) {
-        console.error('Error fetching food items:', foodError);
-        return;
-      }
-
-      // Create a map of food item calories
-      const foodCalories = {};
-      foodItemsData?.forEach(item => {
-        foodCalories[item.id] = item.calories_per_serving || 0;
-      });
-
-      // Fetch meals with their food items using a join
+      // Fetch meals with their food items
       const { data: mealsData, error: mealsError } = await supabase
         .from('meals')
         .select(`
           id,
           type,
           time,
-          food_items!meal_id (
+          food_items (
             id,
             name,
             servings
@@ -159,7 +187,7 @@ const DashboardScreen = ({ navigation }) => {
         time: meal.time,
         foodItems: meal.food_items?.map(item => ({
           ...item,
-          calories: (foodCalories[item.id] || 0) * (item.servings || 1)
+          calories: getCaloriesForFood(item.name, item.servings || 0)
         })) || []
       })) || [];
 
@@ -485,7 +513,8 @@ const DashboardScreen = ({ navigation }) => {
       mealId: meal.id,
       mealType: meal.type || '',
       mealTime: meal.time || '',
-      foodItems: Array.isArray(meal.foodItems) ? meal.foodItems : []
+      foodItems: Array.isArray(meal.foodItems) ? meal.foodItems : [],
+      selectedDate: getLocalDateString()
     });
   };
 
@@ -582,7 +611,7 @@ const DashboardScreen = ({ navigation }) => {
         .from('meals')
         .update({
           type: mealType,
-          time: mealTime,
+          time: localToUTC(mealTime, true),
           food_items: selectedFoods
         })
         .eq('id', editingMeal.id);
@@ -850,7 +879,7 @@ const DashboardScreen = ({ navigation }) => {
                     borderColor: theme.border,
                   },
                 ]}
-                onPress={() => navigation.navigate('AddFood')}
+                onPress={() => navigation.navigate('AddFood', { selectedDate: getLocalDateString() })}
               >
                 <Text style={[styles.addButtonText, { color: theme.importantButtonText }]}>+ Add Meal</Text>
               </TouchableOpacity>
@@ -993,7 +1022,7 @@ const DashboardScreen = ({ navigation }) => {
         <AddActionModal
           isVisible={isAddActionModalVisible}
           onClose={() => setIsAddActionModalVisible(false)}
-          onAddFood={() => navigation.navigate('AddFood')}
+          onAddFood={() => navigation.navigate('AddFood', { selectedDate: getLocalDateString() })}
           onAddExercise={() => setIsExerciseModalVisible(true)}
           theme={theme}
         />
